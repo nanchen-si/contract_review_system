@@ -3,20 +3,21 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from dotenv import dotenv_values
+from pydantic import BaseModel, ConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-class Settings(BaseSettings):
+class Settings(BaseModel):
     """项目配置模型，字段与 .env.example 一一对应。
 
-    配置来源优先级：系统环境变量 > .env 文件 > 下方默认值。
-    下方默认值仅作兜底；真实配置以 .env 为准，同名变量会覆盖默认值。
+    配置只来自项目根目录 .env，不读取系统环境变量。
+    下方默认值仅作兜底；.env 中的同名变量会覆盖默认值。
     Settings 为进程级单例，修改 .env 后需重启服务（开发可用 uvicorn --reload）才生效。
     """
 
-    model_config = SettingsConfigDict(env_file=BASE_DIR / ".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = ConfigDict(extra="ignore")
 
     llm_api_key: str = ""
     llm_base_url: str = ""
@@ -65,5 +66,6 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    """返回 Settings 单例。"""
-    return Settings()
+    """从项目根 .env 读取配置并返回单例。"""
+    values = {key.lower(): value for key, value in dotenv_values(BASE_DIR / ".env").items()}
+    return Settings(**values)
