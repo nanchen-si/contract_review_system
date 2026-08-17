@@ -1,6 +1,6 @@
 """认证相关请求/响应模型。"""
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class RegisterRequest(BaseModel):
@@ -27,6 +27,8 @@ class TokenResponse(BaseModel):
 
 class UserOut(BaseModel):
     """用户信息输出。"""
+
+    model_config = ConfigDict(from_attributes=True)
 
     id: int
     username: str

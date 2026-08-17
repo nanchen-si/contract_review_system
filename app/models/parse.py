@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import JSON, BigInteger, DateTime, String, Text
+from sqlalchemy import JSON, BigInteger, DateTime, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -13,7 +13,7 @@ class ContractParse(Base):
 
     __tablename__ = "contract_parses"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     task_id: Mapped[int] = mapped_column(BigInteger)
     basic_info_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     clause_info_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)

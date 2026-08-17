@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, String, Text
+from sqlalchemy import BigInteger, DateTime, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -13,7 +13,7 @@ class ReviewRule(Base):
 
     __tablename__ = "review_rules"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     rule_code: Mapped[str] = mapped_column(String(64), unique=True)
     rule_name: Mapped[str] = mapped_column(String(128))
     risk_level: Mapped[str] = mapped_column(String(8))
@@ -30,7 +30,7 @@ class RuleHit(Base):
 
     __tablename__ = "rule_hits"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     task_id: Mapped[int] = mapped_column(BigInteger)
     rule_id: Mapped[int] = mapped_column(BigInteger)
     evidence_text: Mapped[str] = mapped_column(Text)

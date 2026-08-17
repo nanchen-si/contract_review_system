@@ -13,7 +13,7 @@ class ApprovalTask(Base):
 
     __tablename__ = "approval_tasks"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     approval_code: Mapped[str] = mapped_column(String(64), unique=True)
     approval_title: Mapped[str] = mapped_column(String(255))
     applicant_name: Mapped[str] = mapped_column(String(64))
@@ -31,7 +31,7 @@ class ApprovalAttachment(Base):
 
     __tablename__ = "approval_attachments"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     task_id: Mapped[int] = mapped_column(BigInteger)
     attachment_id: Mapped[str] = mapped_column(String(64))
     file_name: Mapped[str] = mapped_column(String(255))

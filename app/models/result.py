@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import JSON, BigInteger, DateTime, String, Text
+from sqlalchemy import JSON, BigInteger, DateTime, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -13,7 +13,7 @@ class ReviewResult(Base):
 
     __tablename__ = "review_results"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     task_id: Mapped[int] = mapped_column(BigInteger)
     overall_risk_level: Mapped[str] = mapped_column(String(8))
     summary_text: Mapped[str] = mapped_column(Text)
@@ -28,7 +28,7 @@ class CommentLog(Base):
 
     __tablename__ = "comment_logs"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     task_id: Mapped[int] = mapped_column(BigInteger)
     write_status: Mapped[str] = mapped_column(String(16))
     write_response_text: Mapped[str | None] = mapped_column(Text, nullable=True)

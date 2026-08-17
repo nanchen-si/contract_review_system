@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, String, Text
+from sqlalchemy import BigInteger, DateTime, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -13,7 +13,7 @@ class TaskLog(Base):
 
     __tablename__ = "task_logs"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     task_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     log_level: Mapped[str] = mapped_column(String(8))
     log_type: Mapped[str] = mapped_column(String(16))
