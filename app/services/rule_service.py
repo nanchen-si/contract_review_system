@@ -57,7 +57,14 @@ def seed_default_rules():
 def load_enabled_rules() -> list[ReviewRule]:
     """加载 enabled 规则。"""
     with next(get_session()) as db:
-        return list(db.scalars(select(ReviewRule).where(ReviewRule.rule_status == "enabled")))
+        return list(
+            db.scalars(
+                select(ReviewRule).where(
+                    ReviewRule.rule_status == "enabled",
+                    ReviewRule.is_deleted == 0,
+                )
+            )
+        )
 
 
 def _parse_values(parse_data: dict) -> list[float]:

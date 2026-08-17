@@ -2,11 +2,13 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class LogOut(BaseModel):
     """日志输出。"""
+
+    model_config = ConfigDict(from_attributes=True)
 
     id: int
     task_id: int | None = None

@@ -21,6 +21,7 @@ class ReviewRule(Base):
     match_mode: Mapped[str] = mapped_column(String(16))
     match_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     suggestion_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_deleted: Mapped[int] = mapped_column(Integer, default=0)
     create_time: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     update_time: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, onupdate=datetime.now)
 

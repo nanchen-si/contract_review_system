@@ -26,3 +26,13 @@ def db_session(monkeypatch):
     )
     yield engine
     engine.dispose()
+
+
+@pytest.fixture()
+def client(db_session):
+    """挂载全部路由的测试客户端（不触发真实启动流程）。"""
+    from fastapi.testclient import TestClient
+
+    from main import create_app
+
+    return TestClient(create_app(with_startup=False))

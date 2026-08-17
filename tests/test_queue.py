@@ -7,6 +7,14 @@ import pytest
 from app.workers import queue
 
 
+@pytest.fixture(autouse=True)
+def _reset_queue():
+    """每个队列测试前重置模块级单例，避免跨测试污染。"""
+    queue._queue = None
+    yield
+    queue._queue = None
+
+
 def test_queue_singleton():
     """get_task_queue 返回同一实例。"""
     assert queue.get_task_queue() is queue.get_task_queue()

@@ -2,11 +2,13 @@
 
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class TaskSummary(BaseModel):
     """任务列表项。"""
+
+    model_config = ConfigDict(from_attributes=True)
 
     id: int
     approval_code: str

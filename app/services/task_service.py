@@ -61,7 +61,10 @@ def get_task_detail(task_id: int) -> TaskDetail:
         parse = db.scalar(select(ContractParse).where(ContractParse.task_id == task_id))
         result = db.scalar(select(ReviewResult).where(ReviewResult.task_id == task_id))
         hits = list(db.scalars(select(RuleHit).where(RuleHit.task_id == task_id)))
-        rules = {rule.id: rule.rule_name for rule in db.scalars(select(ReviewRule))}
+        rules = {
+            rule.id: {"rule_name": rule.rule_name, "risk_level": rule.risk_level}
+            for rule in db.scalars(select(ReviewRule))
+        }
         logs = list(
             db.scalars(
                 select(TaskLog)
@@ -101,7 +104,8 @@ def get_task_detail(task_id: int) -> TaskDetail:
             {
                 "id": hit.id,
                 "rule_id": hit.rule_id,
-                "rule_name": rules.get(hit.rule_id, ""),
+                "rule_name": rules.get(hit.rule_id, {}).get("rule_name", ""),
+                "risk_level": rules.get(hit.rule_id, {}).get("risk_level", ""),
                 "evidence_text": hit.evidence_text,
                 "evidence_position": hit.evidence_position,
                 "hit_status": hit.hit_status,

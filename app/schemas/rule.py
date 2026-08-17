@@ -32,6 +32,8 @@ class RuleUpdate(BaseModel):
 class RuleOut(BaseModel):
     """规则输出。"""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     rule_code: str
     rule_name: str
