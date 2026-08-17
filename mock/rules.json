@@ -1,0 +1,15 @@
+{
+  "rules": [
+    {"rule_code": "RULE_PREPAY_RATIO", "rule_name": "预付款比例", "risk_level": "high", "rule_status": "enabled", "match_mode": "numeric", "match_text": "0.5", "suggestion_text": "预付款比例超过 50%，建议增加担保或分期付款安排。"},
+    {"rule_code": "RULE_PAYMENT_CYCLE", "rule_name": "付款周期", "risk_level": "medium", "rule_status": "enabled", "match_mode": "numeric", "match_text": "30", "suggestion_text": "付款周期较长，建议明确逾期付款责任与催收节点。"},
+    {"rule_code": "RULE_AUTO_RENEW", "rule_name": "自动续约", "risk_level": "high", "rule_status": "enabled", "match_mode": "regex", "match_text": "自动续约|自动顺延", "suggestion_text": "存在自动续约条款，建议设置续约前书面确认机制。"},
+    {"rule_code": "RULE_BREACH_LIABILITY", "rule_name": "违约责任", "risk_level": "medium", "rule_status": "enabled", "match_mode": "llm", "match_text": "违约责任条款合理性", "suggestion_text": "违约责任需覆盖主要义务并约定明确的违约金标准。"},
+    {"rule_code": "RULE_JURISDICTION", "rule_name": "管辖地", "risk_level": "medium", "rule_status": "enabled", "match_mode": "regex", "match_text": "境外法院|香港|美国法院|英国法院", "suggestion_text": "争议管辖地位于境外，诉讼成本高，建议评估并调整管辖条款。"},
+    {"rule_code": "RULE_PARTY_MISSING", "rule_name": "主体信息缺失", "risk_level": "high", "rule_status": "enabled", "match_mode": "missing", "match_text": "签约主体", "suggestion_text": "合同缺少签约主体信息，需补充甲乙方全称与主体资质。"},
+    {"rule_code": "RULE_AMOUNT_MISSING", "rule_name": "金额缺失", "risk_level": "high", "rule_status": "enabled", "match_mode": "missing", "match_text": "金额", "suggestion_text": "合同缺少明确金额，需补充合同总金额与币种。"},
+    {"rule_code": "RULE_CONFIDENTIAL_MISSING", "rule_name": "保密缺失", "risk_level": "high", "rule_status": "enabled", "match_mode": "regex", "match_text": "保密条款|保密义务", "suggestion_text": "合同未约定保密条款，建议补充商业秘密与保密期限约定。"},
+    {"rule_code": "RULE_DATA_PROCESSING", "rule_name": "数据处理", "risk_level": "medium", "rule_status": "enabled", "match_mode": "llm", "match_text": "数据处理与个人信息保护", "suggestion_text": "数据处理条款需符合数据安全法要求并明确数据权属。"},
+    {"rule_code": "RULE_IP_RIGHTS", "rule_name": "知识产权", "risk_level": "medium", "rule_status": "enabled", "match_mode": "llm", "match_text": "知识产权归属", "suggestion_text": "知识产权归属需明确，避免交付物权属争议。"},
+    {"rule_code": "RULE_ACCEPTANCE_MISSING", "rule_name": "验收标准缺失", "risk_level": "medium", "rule_status": "enabled", "match_mode": "regex", "match_text": "验收标准|验收条件", "suggestion_text": "合同缺少明确验收标准，建议补充验收指标与流程。"}
+  ]
+}

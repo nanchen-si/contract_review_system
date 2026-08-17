@@ -1,0 +1,15 @@
+{
+  "items": [
+    {
+      "instance_id": "APP-2026-0088",
+      "approval_code": "HT-2026-0088",
+      "approval_title": "供应商采购合同审批",
+      "applicant_name": "张伟",
+      "application_time": "2026-08-17 09:30:00",
+      "attachments": [
+        {"attachment_id": "ATT-001", "file_name": "采购合同2026.docx", "file_type": "docx"},
+        {"attachment_id": "ATT-002", "file_name": "采购合同2026-扫描件.png", "file_type": "png"}
+      ]
+    }
+  ]
+}
