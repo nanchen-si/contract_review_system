@@ -1,0 +1,35 @@
+[project]
+name = "contract-review"
+version = "0.1.0"
+description = "合同审查审批系统"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "sqlalchemy",
+    "pymysql",
+    "cryptography",
+    "langgraph",
+    "langchain-openai",
+    "pydantic-settings",
+    "pyjwt",
+    "passlib[bcrypt]",
+    "bcrypt<4.1",
+    "pdfplumber",
+    "python-docx",
+    "rapidocr-onnxruntime",
+    "pillow",
+    "pymupdf",
+    "python-multipart",
+    "httpx",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
