@@ -4,15 +4,13 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import fitz
-import numpy as np
 from docx import Document
-from PIL import Image
 from sqlalchemy import select
 
 from app.config import get_settings
 from app.db import get_session
 from app.models.parse import ContractParse
-from app.services.ocr_service import filter_low_confidence, ocr_image
+from app.services.ocr_service import filter_low_confidence, ocr_image_file, ocr_pdf_page
 
 
 @dataclass(slots=True)
@@ -66,12 +64,8 @@ def parse_pdf(file_path: str) -> DocumentText:
         if text:
             pages.append(DocumentPage(page_no=index + 1, text=text))
             continue
-        pix = page.get_pixmap(dpi=150)
-        image = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
-        lines = filter_low_confidence(ocr_image(np.array(image)), settings.ocr_confidence_threshold)
-        if not lines:
-            raise ValueError(f"PDF 第 {index + 1} 页图片无法识别")
-        pages.append(DocumentPage(page_no=index + 1, text="\n".join(line.text for line in lines)))
+        page_no, ocr_text = ocr_pdf_page(page, index + 1)
+        pages.append(DocumentPage(page_no=page_no, text=ocr_text))
     if not pages:
         raise ValueError("文档内容为空")
     return DocumentText(file_path=str(file_path), pages=pages)
@@ -80,8 +74,7 @@ def parse_pdf(file_path: str) -> DocumentText:
 def parse_image(file_path: str) -> DocumentText:
     """图片 OCR 提取文本。"""
     settings = get_settings()
-    image = Image.open(file_path)
-    lines = filter_low_confidence(ocr_image(np.array(image)), settings.ocr_confidence_threshold)
+    lines = filter_low_confidence(ocr_image_file(file_path), settings.ocr_confidence_threshold)
     if not lines:
         raise ValueError("图片无法识别")
     return DocumentText(

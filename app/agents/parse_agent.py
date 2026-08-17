@@ -1,8 +1,8 @@
 """LLM 字段抽取代理。"""
 
 import json
+import time
 from dataclasses import dataclass
-from typing import Any
 
 from openai import OpenAI
 
@@ -86,14 +86,23 @@ def build_parse_messages(chunk_text: str) -> list[dict]:
 
 
 def _call_llm(chunk_text: str) -> list[dict]:
-    """调用一次 LLM，解析 JSON 数组输出。"""
+    """调用 LLM 并解析输出，失败自动重试 1 次（指数退避）。"""
     client = _get_client()
     settings = get_settings()
-    response = client.chat.completions.create(
-        model=settings.llm_model,
-        messages=build_parse_messages(chunk_text),
-        response_format={"type": "json_object"},
-    )
+    last_error: Exception | None = None
+    for attempt in range(2):
+        try:
+            response = client.chat.completions.create(
+                model=settings.llm_model,
+                messages=build_parse_messages(chunk_text),
+                response_format={"type": "json_object"},
+            )
+            break
+        except Exception as exc:
+            last_error = exc
+            time.sleep(1)
+    else:
+        raise RuntimeError(f"LLM 调用失败（已重试 1 次）：{last_error}")
     content = response.choices[0].message.content
     payload = json.loads(content)
     if isinstance(payload, dict):
@@ -122,6 +131,13 @@ def _call_llm(chunk_text: str) -> list[dict]:
     if not isinstance(payload, list):
         raise RuntimeError("LLM 输出结构不是 JSON 数组")
     return payload
+
+
+def validate_parse_result(fields: list[ParseField]) -> tuple[str, str | None]:
+    """三层判定：全部 missing → failed；部分缺失 → success + missing。"""
+    if not any(field.extract_status == "extracted" for field in fields):
+        return "failed", "LLM 返回空结果或全部字段缺失"
+    return "success", None
 
 
 def _pick_best(candidates: list[dict]) -> dict:
@@ -172,9 +188,11 @@ def extract_contract_fields(chunks: list[str], llm=None) -> ContractParseResult:
         )
     basic_info = {field.field_name: field.field_value for field in fields[:8]}
     clauses = {field.field_name: {"raw_text": field.raw_text, "page_no": field.page_no} for field in fields[8:]}
+    parse_status, parse_error = validate_parse_result(fields)
     return ContractParseResult(
         basic_info=basic_info,
         clauses=clauses,
         fields=fields,
-        parse_status="success",
+        parse_status=parse_status,
+        parse_error=parse_error,
     )

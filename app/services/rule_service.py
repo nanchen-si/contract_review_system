@@ -240,7 +240,7 @@ def save_review_result(
 
 def run_review_pipeline(task_id: int) -> dict:
     """阶段1 代码匹配 → 阶段2 LLM 判断 → 阶段3 汇总。"""
-    from app.agents.rule_agent import judge_semantic_rules
+    from app.agents.rule_agent import judge_semantic_rules, review_code_hits
 
     parse = get_parse_by_task(task_id)
     if parse is None or parse.parse_status != "success":
@@ -251,6 +251,7 @@ def run_review_pipeline(task_id: int) -> dict:
     }
     rules = load_enabled_rules()
     code_hits = match_code_rules(parse_data, rules)
+    code_hits = review_code_hits(code_hits, parse_data)
     llm_rules = [rule for rule in rules if rule.match_mode == "llm"]
     semantic_hits = judge_semantic_rules(parse_data, llm_rules)
     all_hits = code_hits + semantic_hits

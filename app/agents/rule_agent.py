@@ -71,3 +71,52 @@ def judge_semantic_rules(context: dict, llm_rules: list) -> list[HitMatch]:
     except Exception as exc:
         write_task_log(None, "warn", "rule", f"LLM 语义规则判断失败，已跳过：{exc}")
     return hits
+
+
+def _judge_recheck(hit: HitMatch, clause_text: str) -> dict:
+    """让 LLM 复核一条代码命中是否成立。"""
+    client = _get_client()
+    settings = get_settings()
+    messages = [
+        {
+            "role": "system",
+            "content": "你是合同风险审查复核员。判断命中证据是否真实支持该规则，只依据原文判断。输出 JSON 对象：{\"keep\": true, \"reason\": \"\"}。",
+        },
+        {
+            "role": "user",
+            "content": (
+                f"规则：{hit.rule_name}\n"
+                f"命中证据：{hit.evidence_text}\n"
+                f"合同文本：\n{clause_text}"
+            ),
+        },
+    ]
+    response = client.chat.completions.create(
+        model=settings.llm_model,
+        messages=messages,
+        response_format={"type": "json_object"},
+    )
+    return json.loads(response.choices[0].message.content)
+
+
+def review_code_hits(hits: list[HitMatch], context: dict, llm=None) -> list[HitMatch]:
+    """LLM 复核代码命中，过滤明显误报；LLM 不可用时原样保留。"""
+    if not hits:
+        return []
+    settings = get_settings()
+    if not settings.llm_api_key or not settings.llm_base_url.startswith(("http://", "https://")):
+        return hits
+    clause_text = "\n".join(
+        str(clause.get("raw_text", "")) if isinstance(clause, dict) else str(clause)
+        for clause in context.get("clauses", {}).values()
+    )
+    kept: list[HitMatch] = []
+    try:
+        for hit in hits:
+            verdict = _judge_recheck(hit, clause_text)
+            if verdict.get("keep") is not False:
+                kept.append(hit)
+    except Exception as exc:
+        write_task_log(None, "warn", "rule", f"LLM 代码命中复核失败，保留全部命中：{exc}")
+        return hits
+    return kept or hits
