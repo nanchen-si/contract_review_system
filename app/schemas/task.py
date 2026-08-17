@@ -29,6 +29,7 @@ class TaskDetail(BaseModel):
     parse: Any | None = None
     hits: list[Any] = []
     result: Any | None = None
+    logs: list[Any] = []
 
 
 class TaskStatusFilter(BaseModel):

@@ -44,24 +44,34 @@ class MockClient(ApprovalAdapter):
         """返回审批详情与附件列表。"""
         for item in self._items:
             if item["instance_id"] == instance_id:
-                return ApprovalDetail(
-                    instance_id=item["instance_id"],
-                    approval_code=item["approval_code"],
-                    approval_title=item["approval_title"],
-                    applicant_name=item["applicant_name"],
-                    application_time=datetime.fromisoformat(item["application_time"]),
-                    form_data={"source": "mock"},
-                    attachments=[
-                        AttachmentInfo(
-                            attachment_id=att["attachment_id"],
-                            file_name=att["file_name"],
-                            file_type=att["file_type"],
-                        )
-                        for att in item["attachments"]
-                    ],
-                    status="pending",
-                )
+                return self._detail_from_item(item)
         raise ValueError(f"审批单不存在: {instance_id}")
+
+    def get_detail_by_code(self, approval_code: str) -> ApprovalDetail:
+        """按审批编号定位详情，供拉取链路使用。"""
+        for item in self._items:
+            if item["approval_code"] == approval_code:
+                return self._detail_from_item(item)
+        raise ValueError(f"审批单不存在: {approval_code}")
+
+    def _detail_from_item(self, item: dict) -> ApprovalDetail:
+        return ApprovalDetail(
+            instance_id=item["instance_id"],
+            approval_code=item["approval_code"],
+            approval_title=item["approval_title"],
+            applicant_name=item["applicant_name"],
+            application_time=datetime.fromisoformat(item["application_time"]),
+            form_data={"source": "mock"},
+            attachments=[
+                AttachmentInfo(
+                    attachment_id=att["attachment_id"],
+                    file_name=att["file_name"],
+                    file_type=att["file_type"],
+                )
+                for att in item["attachments"]
+            ],
+            status="pending",
+        )
 
     def download(self, instance_id: str, attachment_id: str, file_name: str) -> DownloadResult:
         """复制样例附件到 uploads，返回路径与校验值。"""
