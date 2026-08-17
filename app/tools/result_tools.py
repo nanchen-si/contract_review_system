@@ -17,4 +17,4 @@ def save_review_result(
 
 def write_approval_comment(instance_id: str, review_id: int) -> str:
     """生成评论并回写审批系统。"""
-    return writeback_by_review(review_id)
+    return writeback_by_review(review_id, instance_id=instance_id)

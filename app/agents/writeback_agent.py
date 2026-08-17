@@ -1,8 +1,13 @@
 """评论生成代理。"""
 
+import json
+import logging
+
 from openai import OpenAI
 
 from app.config import get_settings
+
+logger = logging.getLogger("writeback_agent")
 
 
 def generate_comment(review_result: dict) -> str:
@@ -14,7 +19,7 @@ def generate_comment(review_result: dict) -> str:
             messages = [
                 {
                     "role": "system",
-                    "content": "你是合同审查评论撰写助手。输出中文回写评论：总风险 + 审批关注点 + 摘要；只引用已确认证据，不代替人工审批。",
+                    "content": "你是合同审查评论撰写助手。输出中文回写评论：总风险 + 审批关注点 + 摘要；只引用已确认证据，不代替人工审批。输出 JSON 对象：{\"comment_text\": \"评论内容\"}。",
                 },
                 {
                     "role": "user",
@@ -26,10 +31,10 @@ def generate_comment(review_result: dict) -> str:
                 messages=messages,
                 response_format={"type": "json_object"},
             )
-            payload = response.choices[0].message.content
-            return payload
-        except Exception:
-            pass
+            payload = json.loads(response.choices[0].message.content)
+            return payload.get("comment_text") or str(payload)
+        except Exception as exc:
+            logger.warning("LLM 评论生成失败，使用模板兜底：%s", exc)
     return (
         f"总风险等级：{review_result.get('overall_risk_level', 'low')}\n"
         f"审批关注点：{'；'.join(review_result.get('focus_points', []) or [])}\n"

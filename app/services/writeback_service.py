@@ -33,7 +33,7 @@ def prepare_writeback(task_id: int) -> str:
     return comment
 
 
-def writeback(task_id: int):
+def writeback(task_id: int, instance_id: str | None = None):
     """调用适配层回写，更新 write_status 并写 comment_logs。"""
     comment = prepare_writeback(task_id)
     with next(get_session()) as db:
@@ -41,8 +41,8 @@ def writeback(task_id: int):
         review = db.scalar(select(ReviewResult).where(ReviewResult.task_id == task_id))
         if task is None or review is None:
             raise RuntimeError(f"任务 {task_id} 或审查结果不存在")
-        instance_id = task.approval_code
-        result = get_adapter().write_comment(instance_id, review.id)
+        target_instance_id = instance_id or task.approval_code
+        result = get_adapter().write_comment(target_instance_id, review.id)
         db.add(
             CommentLog(
                 task_id=task_id,
@@ -61,11 +61,11 @@ def retry_writeback(task_id: int) -> str:
     return writeback(task_id)
 
 
-def writeback_by_review(review_id: int) -> str:
+def writeback_by_review(review_id: int, instance_id: str | None = None) -> str:
     """按 review_results.id 定位任务并回写。"""
     with next(get_session()) as db:
         review = db.get(ReviewResult, review_id)
         if review is None:
             raise RuntimeError(f"审查结果不存在: {review_id}")
         task_id = review.task_id
-    return writeback(task_id)
+    return writeback(task_id, instance_id=instance_id)

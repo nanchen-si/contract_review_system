@@ -96,13 +96,29 @@ def match_regex(rule: ReviewRule, text: str) -> HitMatch | None:
     )
 
 
-def match_numeric(rule: ReviewRule, values: list[float]) -> HitMatch | None:
-    """数值阈值匹配，超过阈值即命中。"""
+def _percent_values(text: str) -> list[float]:
+    """提取百分数值。"""
+    return [float(num) for num in re.findall(r"(\d+(?:\.\d+)?)\s*%", text)]
+
+
+def _days_values(text: str) -> list[float]:
+    """提取以日/天结尾的数值。"""
+    return [float(num) for num in re.findall(r"(\d+(?:\.\d+)?)\s*(?:日|天)", text)]
+
+
+def match_numeric(rule: ReviewRule, values: list[float], text: str = "") -> HitMatch | None:
+    """数值阈值匹配，超过阈值即命中；预付款取百分比、付款周期取天数。"""
     try:
         threshold = float(rule.match_text)
     except (TypeError, ValueError):
         return None
-    hit_value = next((value for value in values if value > threshold), None)
+    if rule.rule_code == "RULE_PREPAY_RATIO":
+        candidates = _percent_values(text) or values
+    elif rule.rule_code == "RULE_PAYMENT_CYCLE":
+        candidates = _days_values(text) or values
+    else:
+        candidates = values
+    hit_value = next((value for value in candidates if value > threshold), None)
     if hit_value is None:
         return None
     return HitMatch(
@@ -160,7 +176,7 @@ def match_code_rules(parse_data: dict, rules: list[ReviewRule]) -> list[HitMatch
         if rule.match_mode == "regex":
             hit = match_regex(rule, text)
         elif rule.match_mode == "numeric":
-            hit = match_numeric(rule, values)
+            hit = match_numeric(rule, values, text=text)
         elif rule.match_mode == "missing":
             hit = match_missing(rule, parse_data)
         else:
@@ -171,8 +187,9 @@ def match_code_rules(parse_data: dict, rules: list[ReviewRule]) -> list[HitMatch
 
 
 def save_hits(task_id: int, hits: list[HitMatch]):
-    """命中落库 rule_hits。"""
+    """命中落库 rule_hits：先清旧命中再写入，重复执行不累积。"""
     with next(get_session()) as db:
+        db.execute(RuleHit.__table__.delete().where(RuleHit.task_id == task_id))
         for hit in hits:
             db.add(
                 RuleHit(

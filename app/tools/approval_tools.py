@@ -44,6 +44,12 @@ def download_contract_attachment(instance_id: str, attachment_id: str, file_name
     result = get_adapter().download(instance_id, attachment_id, file_name)
     if task_id is not None:
         with next(get_session()) as db:
+            db.execute(
+                ApprovalAttachment.__table__.delete().where(
+                    ApprovalAttachment.task_id == task_id,
+                    ApprovalAttachment.attachment_id == attachment_id,
+                )
+            )
             db.add(
                 ApprovalAttachment(
                     task_id=task_id,
