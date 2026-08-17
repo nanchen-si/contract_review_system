@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 from pathlib import Path
+import warnings
 
 from dotenv import dotenv_values
 from pydantic import BaseModel, ConfigDict
@@ -62,6 +63,12 @@ class Settings(BaseModel):
         self.mock_data_dir = str((BASE_DIR / self.mock_data_dir).resolve())
         self.upload_dir = str((BASE_DIR / self.upload_dir).resolve())
         self.log_dir = str((BASE_DIR / self.log_dir).resolve())
+        if self.llm_api_key and not self.llm_base_url.startswith(("http://", "https://")):
+            warnings.warn(
+                "LLM_BASE_URL 必须以 http:// 或 https:// 开头，当前配置会被忽略；"
+                "请确认 .env 中密钥放在 LLM_API_KEY、地址放在 LLM_BASE_URL",
+                stacklevel=2,
+            )
 
 
 @lru_cache
