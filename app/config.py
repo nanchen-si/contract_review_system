@@ -9,7 +9,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 class Settings(BaseSettings):
-    """项目配置模型，字段与 .env.example 一一对应。"""
+    """项目配置模型，字段与 .env.example 一一对应。
+
+    配置来源优先级：系统环境变量 > .env 文件 > 下方默认值。
+    下方默认值仅作兜底；真实配置以 .env 为准，同名变量会覆盖默认值。
+    Settings 为进程级单例，修改 .env 后需重启服务（开发可用 uvicorn --reload）才生效。
+    """
 
     model_config = SettingsConfigDict(env_file=BASE_DIR / ".env", env_file_encoding="utf-8", extra="ignore")
 
