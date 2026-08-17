@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from openai import OpenAI
 
+from app.agents.llm import create_structured
 from app.config import get_settings
 
 BASIC_FIELDS = [
@@ -29,6 +30,29 @@ CLAUSE_FIELDS = [
     "争议解决条款",
 ]
 ALL_FIELDS = BASIC_FIELDS + CLAUSE_FIELDS
+
+_FIELDS_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "fields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "field_name": {"type": "string"},
+                    "field_value": {"type": "string"},
+                    "raw_text": {"type": "string"},
+                    "page_no": {"type": "integer"},
+                    "extract_status": {"type": "string", "enum": ["extracted", "missing"]},
+                },
+                "required": ["field_name", "field_value", "raw_text", "page_no", "extract_status"],
+                "additionalProperties": False,
+            },
+        }
+    },
+    "required": ["fields"],
+    "additionalProperties": False,
+}
 
 
 @dataclass(slots=True)
@@ -92,10 +116,12 @@ def _call_llm(chunk_text: str) -> list[dict]:
     last_error: Exception | None = None
     for attempt in range(2):
         try:
-            response = client.chat.completions.create(
-                model=settings.llm_model,
-                messages=build_parse_messages(chunk_text),
-                response_format={"type": "json_object"},
+            response = create_structured(
+                client,
+                settings.llm_model,
+                build_parse_messages(chunk_text),
+                "contract_fields",
+                _FIELDS_SCHEMA,
             )
             break
         except Exception as exc:

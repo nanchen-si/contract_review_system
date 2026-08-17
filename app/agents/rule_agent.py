@@ -4,9 +4,33 @@ import json
 
 from openai import OpenAI
 
+from app.agents.llm import create_structured
 from app.config import get_settings
 from app.services.log_service import write_task_log
 from app.services.rule_service import HitMatch
+
+_VERDICT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "rule_id": {"type": "integer"},
+        "hit": {"type": "boolean"},
+        "evidence_text": {"type": "string"},
+        "evidence_position": {"type": "string"},
+        "reason": {"type": "string"},
+    },
+    "required": ["rule_id", "hit", "evidence_text", "evidence_position", "reason"],
+    "additionalProperties": False,
+}
+
+_KEEP_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "keep": {"type": "boolean"},
+        "reason": {"type": "string"},
+    },
+    "required": ["keep", "reason"],
+    "additionalProperties": False,
+}
 
 
 def _get_client() -> OpenAI:
@@ -36,10 +60,12 @@ def _judge_one(rule, clause_text: str) -> dict:
             ),
         },
     ]
-    response = client.chat.completions.create(
-        model=settings.llm_model,
-        messages=messages,
-        response_format={"type": "json_object"},
+    response = create_structured(
+        client,
+        settings.llm_model,
+        messages,
+        "semantic_verdict",
+        _VERDICT_SCHEMA,
     )
     return json.loads(response.choices[0].message.content)
 
@@ -91,10 +117,12 @@ def _judge_recheck(hit: HitMatch, clause_text: str) -> dict:
             ),
         },
     ]
-    response = client.chat.completions.create(
-        model=settings.llm_model,
-        messages=messages,
-        response_format={"type": "json_object"},
+    response = create_structured(
+        client,
+        settings.llm_model,
+        messages,
+        "hit_recheck",
+        _KEEP_SCHEMA,
     )
     return json.loads(response.choices[0].message.content)
 

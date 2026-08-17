@@ -5,9 +5,19 @@ import logging
 
 from openai import OpenAI
 
+from app.agents.llm import create_structured
 from app.config import get_settings
 
 logger = logging.getLogger("writeback_agent")
+
+_COMMENT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "comment_text": {"type": "string"},
+    },
+    "required": ["comment_text"],
+    "additionalProperties": False,
+}
 
 
 def generate_comment(review_result: dict) -> str:
@@ -26,10 +36,12 @@ def generate_comment(review_result: dict) -> str:
                     "content": f"审查结果：{review_result}",
                 },
             ]
-            response = client.chat.completions.create(
-                model=settings.llm_model,
-                messages=messages,
-                response_format={"type": "json_object"},
+            response = create_structured(
+                client,
+                settings.llm_model,
+                messages,
+                "writeback_comment",
+                _COMMENT_SCHEMA,
             )
             payload = json.loads(response.choices[0].message.content)
             return payload.get("comment_text") or str(payload)
