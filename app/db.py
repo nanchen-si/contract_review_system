@@ -17,7 +17,7 @@ def get_engine():
         _engine = create_engine(
             (
                 f"mysql+pymysql://{settings.db_user}:{settings.db_password}"
-                f"@{settings.db_host}:{settings.db_port}/{settings.db_name}?charset=utf8mb4"
+                f"@{settings.db_host}:{settings.db_port}/{settings.db_name}?charset={settings.db_charset}"
             ),
             pool_pre_ping=True,
         )

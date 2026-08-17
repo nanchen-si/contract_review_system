@@ -1,8 +1,11 @@
 """统一读取 .env，向全项目提供配置单例。"""
 
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 class Settings(BaseSettings):
@@ -28,6 +31,7 @@ class Settings(BaseSettings):
     db_user: str = "root"
     db_password: str = ""
     db_name: str = "contract_review"
+    db_charset: str = "utf8mb4"
 
     app_host: str = "0.0.0.0"
     app_port: int = 8000
@@ -46,6 +50,12 @@ class Settings(BaseSettings):
     def clause_keyword_list(self) -> list[str]:
         """条款关键词逗号分隔转列表，供标题识别与规则复用。"""
         return [item.strip() for item in self.clause_keywords.split(",") if item.strip()]
+
+    def model_post_init(self, __context) -> None:
+        """把相对目录统一解析为项目根目录下的绝对路径。"""
+        self.mock_data_dir = str((BASE_DIR / self.mock_data_dir).resolve())
+        self.upload_dir = str((BASE_DIR / self.upload_dir).resolve())
+        self.log_dir = str((BASE_DIR / self.log_dir).resolve())
 
 
 @lru_cache
