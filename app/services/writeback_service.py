@@ -17,17 +17,17 @@ def _get_review(task_id: int) -> ReviewResult | None:
 
 def prepare_writeback(task_id: int) -> str:
     """生成评论并写入 review_results.comment_text。"""
-    review = _get_review(task_id)
-    if review is None:
-        raise RuntimeError(f"任务 {task_id} 无审查结果")
-    comment = generate_comment(
-        {
-            "overall_risk_level": review.overall_risk_level,
-            "summary_text": review.summary_text,
-            "focus_points": review.focus_points_json or [],
-        }
-    )
     with next(get_session()) as db:
+        review = db.scalar(select(ReviewResult).where(ReviewResult.task_id == task_id))
+        if review is None:
+            raise RuntimeError(f"任务 {task_id} 无审查结果")
+        comment = generate_comment(
+            {
+                "overall_risk_level": review.overall_risk_level,
+                "summary_text": review.summary_text,
+                "focus_points": review.focus_points_json or [],
+            }
+        )
         review.comment_text = comment
         db.commit()
     return comment
