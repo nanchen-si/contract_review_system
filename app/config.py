@@ -3,6 +3,7 @@
 from functools import lru_cache
 from pathlib import Path
 import warnings
+from urllib.parse import urlparse
 
 from dotenv import dotenv_values
 from pydantic import BaseModel, ConfigDict
@@ -57,6 +58,14 @@ class Settings(BaseModel):
     def clause_keyword_list(self) -> list[str]:
         """条款关键词逗号分隔转列表，供标题识别与规则复用。"""
         return [item.strip() for item in self.clause_keywords.split(",") if item.strip()]
+
+    @property
+    def llm_base_url_v1(self) -> str:
+        """OpenAI 兼容地址：缺 /v1 路径时自动补全。"""
+        parsed = urlparse(self.llm_base_url)
+        if not parsed.path:
+            return self.llm_base_url.rstrip("/") + "/v1"
+        return self.llm_base_url
 
     def model_post_init(self, __context) -> None:
         """把相对目录统一解析为项目根目录下的绝对路径。"""

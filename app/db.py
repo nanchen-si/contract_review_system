@@ -28,7 +28,12 @@ def get_session():
     """FastAPI 依赖，yield Session。"""
     global _session_local
     if _session_local is None:
-        _session_local = sessionmaker(bind=get_engine(), autoflush=False, autocommit=False)
+        _session_local = sessionmaker(
+            bind=get_engine(),
+            autoflush=False,
+            autocommit=False,
+            expire_on_commit=False,
+        )
     db = _session_local()
     try:
         yield db
