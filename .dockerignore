@@ -1,0 +1,12 @@
+__pycache__
+.pytest_cache
+.git
+.idea
+.env
+.env.*
+uploads
+logs
+progress
+mock/comments
+.venv
+*.log
