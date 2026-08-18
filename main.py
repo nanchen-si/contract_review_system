@@ -2,17 +2,21 @@
 
 import asyncio
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api import auth, hits, logs, rules, tasks
 from app.config import get_settings
 from app.core.security import ensure_admin_seed
 from app.db import init_db
 from app.workers.queue import worker_loop
+
+BASE_DIR = Path(__file__).resolve().parent
 
 
 def _error_response(status: int, message: str) -> JSONResponse:
@@ -42,6 +46,15 @@ def create_app(with_startup: bool = True) -> FastAPI:
     )
     for router in (auth.router, tasks.router, rules.router, hits.router, logs.router):
         app.include_router(router)
+
+    frontend_dir = BASE_DIR / "frontend"
+    if frontend_dir.is_dir():
+        app.mount("/static", StaticFiles(directory=frontend_dir), name="static")
+
+        @app.get("/", include_in_schema=False)
+        def index():
+            """前端入口页。"""
+            return FileResponse(frontend_dir / "index.html")
 
     @app.get("/api/health")
     def health():
