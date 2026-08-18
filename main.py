@@ -14,6 +14,7 @@ from app.api import auth, hits, logs, rules, tasks
 from app.config import get_settings
 from app.core.security import ensure_admin_seed
 from app.db import init_db
+from app.services.rule_service import seed_default_rules
 from app.workers.queue import worker_loop
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -30,6 +31,7 @@ def create_app(with_startup: bool = True) -> FastAPI:
         if with_startup:
             init_db()
             ensure_admin_seed()
+            seed_default_rules()
             worker = asyncio.create_task(worker_loop())
             yield
             worker.cancel()
