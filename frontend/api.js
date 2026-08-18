@@ -5,7 +5,7 @@
 (function (global) {
   'use strict';
 
-  const DEFAULT_BASE_URL = 'http://127.0.0.1:8000';
+  const DEFAULT_BASE_URL = '';
   const TOKEN_KEY = 'crs.token';
   const USER_KEY = 'crs.user';
 
@@ -13,6 +13,7 @@
 
   function setBaseUrl(url) {
     state.baseUrl = String(url || DEFAULT_BASE_URL).replace(/\/+$/, '');
+    if (state.baseUrl === '') state.baseUrl = '';
     try { localStorage.setItem('crs.baseUrl', state.baseUrl); } catch (e) {}
   }
 
