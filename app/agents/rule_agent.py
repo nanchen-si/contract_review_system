@@ -6,6 +6,7 @@ from openai import OpenAI
 
 from app.agents.llm import create_structured
 from app.config import get_settings
+from app.prompt import load_messages
 from app.services.log_service import write_task_log
 from app.services.rule_service import HitMatch
 
@@ -45,21 +46,18 @@ def _judge_one(rule, clause_text: str) -> dict:
     """判断单条语义规则。"""
     client = _get_client()
     settings = get_settings()
-    messages = [
-        {
-            "role": "system",
-            "content": "你是合同风险审查员。判断规则是否命中，只引用原文证据；无法判断时 hit=false。",
-        },
+    messages = load_messages([
+        {"role": "system", "name": "rule_judge_system"},
         {
             "role": "user",
-            "content": (
-                f"规则：{rule.rule_name}（{rule.match_text}）\n"
-                f"条款文本：\n{clause_text}\n"
-                "输出 JSON：{\"rule_id\": 0, \"hit\": false, \"evidence_text\": \"\", "
-                "\"evidence_position\": \"\", \"reason\": \"\"}"
-            ),
+            "name": "rule_judge_user",
+            "format": {
+                "rule_name": rule.rule_name,
+                "match_text": rule.match_text or "",
+                "clause_text": clause_text,
+            },
         },
-    ]
+    ])
     response = create_structured(
         client,
         settings.llm_model,
@@ -103,20 +101,18 @@ def _judge_recheck(hit: HitMatch, clause_text: str) -> dict:
     """让 LLM 复核一条代码命中是否成立。"""
     client = _get_client()
     settings = get_settings()
-    messages = [
-        {
-            "role": "system",
-            "content": "你是合同风险审查复核员。判断命中证据是否真实支持该规则，只依据原文判断。输出 JSON 对象：{\"keep\": true, \"reason\": \"\"}。",
-        },
+    messages = load_messages([
+        {"role": "system", "name": "rule_recheck_system"},
         {
             "role": "user",
-            "content": (
-                f"规则：{hit.rule_name}\n"
-                f"命中证据：{hit.evidence_text}\n"
-                f"合同文本：\n{clause_text}"
-            ),
+            "name": "rule_recheck_user",
+            "format": {
+                "rule_name": hit.rule_name,
+                "evidence_text": hit.evidence_text,
+                "clause_text": clause_text,
+            },
         },
-    ]
+    ])
     response = create_structured(
         client,
         settings.llm_model,

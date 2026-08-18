@@ -1,0 +1,4 @@
+规则：{rule_name}（{match_text}）
+条款文本：
+{clause_text}
+输出 JSON：{{"rule_id": 0, "hit": false, "evidence_text": "", "evidence_position": "", "reason": ""}}

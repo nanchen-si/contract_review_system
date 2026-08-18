@@ -25,7 +25,7 @@
 - `app/services/clause_splitter.py`：清洗、标题识别（三级信号）、转 Markdown、章节切分、过滤、分块。
 - `app/services/rule_service.py`：11 条规则种子、regex/numeric/missing 匹配、命中落库、风险聚合。
 - `app/services/writeback_service.py`：评论准备、回写、状态记录。
-- `app/agents/`：`parse_agent` / `rule_agent` / `writeback_agent`，统一 OpenAI 兼容接口 + JSON Schema 结构化输出（不兼容端点回退 json_object）。
+- `app/agents/`：`parse_agent` / `rule_agent` / `writeback_agent`，统一 OpenAI 兼容接口 + JSON 结构化输出。
 
 ## 三、验证结果
 

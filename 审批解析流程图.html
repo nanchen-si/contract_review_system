@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>合同审查审批系统 · 解析流程图</title>
+<style>
+:root{
+  --bg:#eef2f8; --ink:#1c2536; --muted:#5b6b82; --line:#d7dee9;
+  --blue:#2563eb; --blue-bg:#eaf1fe; --green:#0d9488; --green-bg:#e6f7f5;
+  --orange:#ea580c; --orange-bg:#fff1e8; --purple:#7c3aed; --purple-bg:#f1ebfe;
+  --red:#dc2626; --red-bg:#fdeeee; --amber:#b45309; --amber-bg:#fdf3e3;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Microsoft YaHei","PingFang SC","Noto Sans SC",system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+header{background:#141b2d;color:#fff;padding:18px 28px}
+header h1{font-size:20px;font-weight:700}
+header p{font-size:12px;color:#b9c4d8;margin-top:4px}
+nav{position:sticky;top:0;z-index:10;background:#1d2740;padding:8px 24px;display:flex;gap:8px;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+nav button{border:1px solid #3b4a6b;background:transparent;color:#cdd7ea;border-radius:8px;padding:7px 14px;font-size:13px;cursor:pointer;transition:.15s}
+nav button:hover{border-color:#7b93c4;color:#fff}
+nav button.active{background:#2563eb;border-color:#2563eb;color:#fff}
+main{max-width:1180px;margin:0 auto;padding:24px 20px 60px}
+section.diagram{display:none}
+section.diagram.active{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.diagram h2{font-size:19px;margin-bottom:6px;display:flex;align-items:center;gap:10px}
+.diagram h2 .badge{background:#2563eb;color:#fff;font-size:12px;padding:2px 10px;border-radius:20px;font-weight:600}
+.diagram .intro{color:var(--muted);font-size:13px;margin-bottom:14px;max-width:1000px}
+.svg-wrap{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;overflow:auto;box-shadow:0 6px 18px rgba(28,37,54,.06)}
+svg{width:100%;height:auto;display:block;min-width:900px}
+svg text{font-family:"Microsoft YaHei","PingFang SC","Noto Sans SC",sans-serif}
+.legend-note{font-size:12px;color:var(--muted);margin-top:10px}
+.legend-note code{background:#eef1f7;border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+.example-block{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px;margin-top:14px;box-shadow:0 6px 18px rgba(28,37,54,.06)}
+.example-block h3{font-size:15px;margin-bottom:10px}
+.example-block p{font-size:12px;color:var(--muted);margin-bottom:10px}
+.example-block details{border:1px solid var(--line);border-radius:8px;margin-bottom:8px;background:#f8fafc}
+.example-block summary{cursor:pointer;padding:10px 14px;font-weight:600;font-size:13px;user-select:none}
+.example-block pre{background:#0f172a;color:#e2e8f0;padding:14px;border-radius:0 0 8px 8px;overflow:auto;font-size:12px;line-height:1.6;margin:0}
+.sub-diagram-title{font-size:15px;font-weight:700;margin-bottom:10px;color:#1e3a8a}
+</style>
+</head>
+<body>
+<header>
+  <h1>合同审查审批系统 · 审批单解析流程图</h1>
+  <p>依据 .spec.md（37 步实施步骤）绘制 · Python 3.12 + FastAPI + LangGraph + MySQL 8 · 5 个模块图</p>
+</header>
+<nav id="tabs">
+  <button data-tab="m2" class="active">审批解析全流程</button>
+  <button data-tab="m3">文档解析详解</button>
+  <button data-tab="m4">规则匹配</button>
+  <button data-tab="m5">LLM 与 Prompt</button>
+  <button data-tab="m1">系统架构</button>
+</nav>
+<main>
+
+<section id="m2" class="diagram active">
+  <h2><span class="badge">模块 1</span>审批单解析全流程（LangGraph 工作流 + 异步队列 + 状态机）</h2>
+  <p class="intro">这张图回答"一份审批单从触发到回写是怎么一步步走完的"：人工触发拉取 → 按 approval_code 去重 → 入队 → LangGraph 按 ingest → download → parse → review → save → writeback 固定顺序执行，每一步都有数据落库和状态流转，异常统一进入 blocked 后由 admin 重试。</p>
+  <div class="svg-wrap">
+  <svg viewBox="0 0 1100 740" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="m2a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+        <path d="M1 2L8 5L1 8" fill="none" stroke="#5b6b82" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </marker>
+      <marker id="m2r" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+        <path d="M1 2L8 5L1 8" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </marker>
+    </defs>
+
+    <!-- 左列步骤 1-7 -->
+    <circle cx="64" cy="53" r="13" fill="#2563eb"/><text x="64" y="58" text-anchor="middle" font-size="12" fill="#fff" font-weight="bold">1</text>
+    <rect x="90" y="24" width="430" height="58" rx="8" fill="#eaf1fe" stroke="#2563eb"/>
+    <text x="305" y="46" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e3a8a">人工触发拉取</text>
+    <text x="305" y="66" text-anchor="middle" font-size="11" fill="#475569">POST /api/tasks/trigger（FastAPI app/api/tasks.py）</text>
+
+    <circle cx="64" cy="131" r="13" fill="#2563eb"/><text x="64" y="136" text-anchor="middle" font-size="12" fill="#fff" font-weight="bold">2</text>
+    <rect x="90" y="102" width="430" height="58" rx="8" fill="#eaf1fe" stroke="#2563eb"/>
+    <text x="305" y="124" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e3a8a">拉取待办列表</text>
+    <text x="305" y="144" text-anchor="middle" font-size="11" fill="#475569">list_pending_contract_approvals(limit) → MockClient.list_pending（mock/approvals.json）</text>
+
+    <circle cx="64" cy="209" r="13" fill="#0d9488"/><text x="64" y="214" text-anchor="middle" font-size="12" fill="#fff" font-weight="bold">3</text>
+    <rect x="90" y="180" width="430" height="58" rx="8" fill="#e6f7f5" stroke="#0d9488"/>
+    <text x="305" y="202" text-anchor="middle" font-size="13" font-weight="bold" fill="#115e59">按 approval_code 去重入库</text>
+    <text x="305" y="222" text-anchor="middle" font-size="11" fill="#475569">新单建 pending / 重复单只更新，不新建（approval_tasks）</text>
+
+    <circle cx="64" cy="287" r="13" fill="#0d9488"/><text x="64" y="292" text-anchor="middle" font-size="12" fill="#fff" font-weight="bold">4</text>
+    <rect x="90" y="258" width="430" height="58" rx="8" fill="#e6f7f5" stroke="#0d9488"/>
+    <text x="305" y="280" text-anchor="middle" font-size="13" font-weight="bold" fill="#115e59">任务入队</text>
+    <text x="305" y="300" text-anchor="middle" font-size="11" fill="#475569">enqueue_task(task_id) → asyncio.Queue 单例（app/workers/queue.py）</text>
+
+    <circle cx="64" cy="365" r="13" fill="#0d9488"/><text x="64" y="370" text-anchor="middle" font-size="12" fill="#fff" font-weight="bold">5</text>
+    <rect x="90" y="336" width="430" height="58" rx="8" fill="#e6f7f5" stroke="#0d9488"/>
+    <text x="305" y="358" text-anchor="middle" font-size="13" font-weight="bold" fill="#115e59">后台 worker 消费</text>
+    <text x="305" y="378" text-anchor="middle" font-size="11" fill="#475569">worker_loop 串行取出任务 → run_workflow(task_id)</text>
+
+    <circle cx="64" cy="443" r="13" fill="#7c3aed"/><text x="64" y="448" text-anchor="middle" font-size="12" fill="#fff" font-weight="bold">6</text>
+    <rect x="90" y="414" width="430" height="58" rx="8" fill="#f1ebfe" stroke="#7c3aed"/>
+    <text x="305" y="436" text-anchor="middle" font-size="13" font-weight="bold" fill="#5b21b6">ingest_node（LangGraph 节点）</text>
+    <text x="305" y="456" text-anchor="middle" font-size="11" fill="#475569">get_contract_approval(instance_id)，task_status：pending→parsing</text>
+
+    <circle cx="64" cy="521" r="13" fill="#7c3aed"/><text x="64" y="526" text-anchor="middle" font-size="12" fill="#fff" font-weight="bold">7</text>
+    <rect x="90" y="492" width="430" height="58" rx="8" fill="#f1ebfe" stroke="#7c3aed"/>
+    <text x="305" y="514" text-anchor="middle" font-size="13" font-weight="bold" fill="#5b21b6">download_node（下载合同附件）</text>
+    <text x="305" y="534" text-anchor="middle" font-size="11" fill="#475569">逐个下载全部附件 → approval_attachments（download_status，大小校验 UPLOAD_MAX_MB）</text>
+
+    <!-- 7 → 8 蛇形连接：沿右侧边缘回到右列顶部 -->
+    <line x1="520" y1="521" x2="1060" y2="521" stroke="#7c3aed" stroke-width="1.8"/>
+    <line x1="1060" y1="521" x2="1060" y2="53" stroke="#7c3aed" stroke-width="1.8"/>
+    <line x1="1060" y1="53" x2="1014" y2="53" stroke="#7c3aed" stroke-width="1.8" marker-end="url(#m2a)"/>
+    <text x="700" y="512" text-anchor="middle" font-size="11" fill="#7c3aed">进入解析阶段（run_workflow）</text>
+
+    <!-- 右列步骤 8-14 -->
+    <circle cx="562" cy="53" r="13" fill="#7c3aed"/><text x="562" y="58" text-anchor="middle" font-size="12" fill="#fff" font-weight="bold">8</text>
+    <rect x="580" y="24" width="430" height="58" rx="8" fill="#f1ebfe" stroke="#7c3aed"/>
+    <text x="795" y="46" text-anchor="middle" font-size="13" font-weight="bold" fill="#5b21b6">parse_node（解析合同）</text>
+    <text x="795" y="66" text-anchor="middle" font-size="11" fill="#475569">文本提取/OCR + LLM 字段抽取 → contract_parses（详见模块 2 图）</text>
+
+    <circle cx="562" cy="131" r="13" fill="#7c3aed"/><text x="562" y="136" text-anchor="middle" font-size="12" fill="#fff" font-weight="bold">9</text>
+    <rect x="580" y="102" width="430" height="58" rx="8" fill="#f1ebfe" stroke="#7c3aed"/>
+    <text x="795" y="124" text-anchor="middle" font-size="13" font-weight="bold" fill="#5b21b6">review_node（规则审查）</text>
+    <text x="795" y="144" text-anchor="middle" font-size="11" fill="#475569">run_contract_rules(case_id) → rule_hits / review_results（详见模块 3 图）</text>
+
+    <circle cx="562" cy="209" r="13" fill="#7c3aed"/><text x="562" y="214" text-anchor="middle" font-size="12" fill="#fff" font-weight="bold">10</text>
+    <rect x="580" y="180" width="430" height="58" rx="8" fill="#f1ebfe" stroke="#7c3aed"/>
+    <text x="795" y="202" text-anchor="middle" font-size="13" font-weight="bold" fill="#5b21b6">save_node（保存审查结果）</text>
+    <text x="795" y="222" text-anchor="middle" font-size="11" fill="#475569">save_review_result(...) → review_results（task_status：reviewing）</text>
+
+    <circle cx="562" cy="287" r="13" fill="#7c3aed"/><text x="562" y="292" text-anchor="middle" font-size="12" fill="#fff" font-weight="bold">11</text>
+    <rect x="580" y="258" width="430" height="58" rx="8" fill="#f1ebfe" stroke="#7c3aed"/>
+    <text x="795" y="280" text-anchor="middle" font-size="13" font-weight="bold" fill="#5b21b6">writeback_node（评论回写）</text>
+    <text x="795" y="300" text-anchor="middle" font-size="11" fill="#475569">generate_comment → write_approval_comment → comment_logs（write_status）</text>
+
+    <circle cx="562" cy="365" r="13" fill="#0d9488"/><text x="562" y="370" text-anchor="middle" font-size="12" fill="#fff" font-weight="bold">12</text>
+    <rect x="580" y="336" width="430" height="58" rx="8" fill="#e6f7f5" stroke="#0d9488"/>
+    <text x="795" y="358" text-anchor="middle" font-size="13" font-weight="bold" fill="#115e59">回写成功，任务完成</text>
+    <text x="795" y="378" text-anchor="middle" font-size="11" fill="#475569">write_status=success → task_status=done</text>
+
+    <circle cx="562" cy="443" r="13" fill="#dc2626"/><text x="562" y="448" text-anchor="middle" font-size="12" fill="#fff" font-weight="bold">13</text>
+    <rect x="580" y="414" width="430" height="58" rx="8" fill="#fdeeee" stroke="#dc2626"/>
+    <text x="795" y="436" text-anchor="middle" font-size="13" font-weight="bold" fill="#991b1b">异常处理：block_node</text>
+    <text x="795" y="456" text-anchor="middle" font-size="11" fill="#7f1d1d">附件缺失 / 图片无法识别 / 文档内容为空 / 接口失败 → blocked</text>
+
+    <circle cx="562" cy="521" r="13" fill="#b45309"/><text x="562" y="526" text-anchor="middle" font-size="12" fill="#fff" font-weight="bold">14</text>
+    <rect x="580" y="492" width="430" height="58" rx="8" fill="#fdf3e3" stroke="#b45309"/>
+    <text x="795" y="514" text-anchor="middle" font-size="13" font-weight="bold" fill="#92400e">人工重试恢复</text>
+    <text x="795" y="534" text-anchor="middle" font-size="11" fill="#92400e">admin：POST /api/tasks/{id}/retry → 回 parsing/reviewing 重跑节点（幂等），上限 MAX_RETRY_COUNT=3（.env 可调）</text>
+
+    <!-- 状态机汇总 -->
+    <line x1="305" y1="550" x2="305" y2="574" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m2a)"/>
+    <line x1="795" y1="550" x2="795" y2="574" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m2a)"/>
+    <rect x="60" y="578" width="440" height="86" rx="10" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="6 3"/>
+    <text x="280" y="600" text-anchor="middle" font-size="12" font-weight="bold" fill="#334155">任务状态机（2.4.4）</text>
+    <rect x="100" y="610" width="76" height="26" rx="6" fill="#e2e8f0"/><text x="138" y="627" text-anchor="middle" font-size="10" fill="#334155">pending</text>
+    <text x="182" y="627" text-anchor="middle" font-size="12" fill="#94a3b8">→</text>
+    <rect x="194" y="610" width="76" height="26" rx="6" fill="#e2e8f0"/><text x="232" y="627" text-anchor="middle" font-size="10" fill="#334155">parsing</text>
+    <text x="276" y="627" text-anchor="middle" font-size="12" fill="#94a3b8">→</text>
+    <rect x="288" y="610" width="76" height="26" rx="6" fill="#e2e8f0"/><text x="326" y="627" text-anchor="middle" font-size="10" fill="#334155">reviewing</text>
+    <text x="370" y="627" text-anchor="middle" font-size="12" fill="#94a3b8">→</text>
+    <rect x="382" y="610" width="76" height="26" rx="6" fill="#e2e8f0"/><text x="420" y="627" text-anchor="middle" font-size="10" fill="#334155">done</text>
+    <text x="280" y="652" text-anchor="middle" font-size="10" fill="#64748b">blocked 可人工重试回 parsing/reviewing；回写状态 not_written → writing → success/failed</text>
+
+    <rect x="560" y="578" width="440" height="86" rx="10" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="6 3"/>
+    <text x="780" y="600" text-anchor="middle" font-size="12" font-weight="bold" fill="#334155">全链路日志</text>
+    <text x="780" y="626" text-anchor="middle" font-size="11" fill="#475569">每步通过 log_service.write_task_log 写入 task_logs</text>
+    <text x="780" y="644" text-anchor="middle" font-size="11" fill="#475569">字段：task_id / log_level / log_type / log_content</text>
+    <text x="780" y="656" text-anchor="middle" font-size="10" fill="#64748b">GET /api/logs（admin）按级别/类型/任务筛选</text>
+
+    <rect x="60" y="682" width="940" height="30" rx="8" fill="#f1f5f9"/>
+    <rect x="80" y="690" width="14" height="14" rx="3" fill="#2563eb"/><text x="102" y="701" font-size="11" fill="#475569">API/入口</text>
+    <rect x="170" y="690" width="14" height="14" rx="3" fill="#0d9488"/><text x="192" y="701" font-size="11" fill="#475569">调度/去重</text>
+    <rect x="270" y="690" width="14" height="14" rx="3" fill="#7c3aed"/><text x="292" y="701" font-size="11" fill="#475569">LangGraph 节点</text>
+    <rect x="390" y="690" width="14" height="14" rx="3" fill="#dc2626"/><text x="412" y="701" font-size="11" fill="#475569">异常/blocked</text>
+    <rect x="510" y="690" width="14" height="14" rx="3" fill="#b45309"/><text x="532" y="701" font-size="11" fill="#475569">人工重试</text>
+    <line x1="620" y1="697" x2="660" y2="697" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m2a)"/><text x="672" y="701" font-size="11" fill="#475569">正常流转</text>
+    <line x1="760" y1="697" x2="800" y2="697" stroke="#dc2626" stroke-width="1.5" marker-end="url(#m2r)"/><text x="812" y="701" font-size="11" fill="#475569">异常路径</text>
+  </svg>
+  </div>
+  <p class="legend-note">模块导航可切换：<code>文档解析详解</code> 拆解第 8 步 parse_node，<code>规则匹配</code> 拆解第 9 步 review_node。</p>
+</section>
+
+<section id="m3" class="diagram">
+  <h2><span class="badge">模块 2</span>文档解析详解：从附件到结构化字段，一步一步说清楚</h2>
+  <p class="intro">拆解模块 1 的第 8 步 parse_node。核心链路：审批单只提供元数据，附件才是合同正文；按扩展名逐个解析全部附件 → 无文本层 PDF 和图片走 OCR → 全部附件合并为一个 DocumentText → 长文本先经"清洗、条款切分、无用点过滤"（见下方附图）→ LLM 只拿精华文本抽取 8 个基本信息 + 8 个条款字段 → 校验 16 个字段 → 落库 contract_parses。解析失败必须记 parse_error 并进入 blocked。</p>
+  <div class="svg-wrap">
+  <svg viewBox="0 0 1100 1160" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="m3a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+        <path d="M1 2L8 5L1 8" fill="none" stroke="#5b6b82" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </marker>
+      <marker id="m3r" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+        <path d="M1 2L8 5L1 8" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </marker>
+      <marker id="m3p" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+        <path d="M1 2L8 5L1 8" fill="none" stroke="#7c3aed" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </marker>
+    </defs>
+
+    <!-- 左侧字段清单面板 -->
+    <rect x="20" y="40" width="230" height="860" rx="10" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="6 3"/>
+    <text x="40" y="66" font-size="13" font-weight="bold" fill="#1e3a8a">合同解析字段清单（2.4.5）</text>
+    <text x="40" y="92" font-size="12" font-weight="bold" fill="#0f766e">基本信息 8 项</text>
+    <text x="40" y="112" font-size="11" fill="#475569">合同标题</text>
+    <text x="40" y="132" font-size="11" fill="#475569">合同编号</text>
+    <text x="40" y="152" font-size="11" fill="#475569">签约主体</text>
+    <text x="40" y="172" font-size="11" fill="#475569">对方名称</text>
+    <text x="40" y="192" font-size="11" fill="#475569">金额</text>
+    <text x="40" y="212" font-size="11" fill="#475569">币种</text>
+    <text x="40" y="232" font-size="11" fill="#475569">生效时间</text>
+    <text x="40" y="252" font-size="11" fill="#475569">到期时间</text>
+    <text x="40" y="284" font-size="12" font-weight="bold" fill="#0f766e">条款信息 8 项</text>
+    <text x="40" y="304" font-size="11" fill="#475569">付款条款</text>
+    <text x="40" y="324" font-size="11" fill="#475569">交付条款</text>
+    <text x="40" y="344" font-size="11" fill="#475569">验收条款</text>
+    <text x="40" y="364" font-size="11" fill="#475569">违约条款</text>
+    <text x="40" y="384" font-size="11" fill="#475569">保密条款</text>
+    <text x="40" y="404" font-size="11" fill="#475569">数据条款</text>
+    <text x="40" y="424" font-size="11" fill="#475569">知识产权条款</text>
+    <text x="40" y="444" font-size="11" fill="#475569">争议解决条款</text>
+    <line x1="40" y1="470" x2="230" y2="470" stroke="#e2e8f0"/>
+    <text x="40" y="496" font-size="12" font-weight="bold" fill="#334155">每个字段必须保留</text>
+    <text x="40" y="518" font-size="11" fill="#475569">raw_text（原文片段）</text>
+    <text x="40" y="538" font-size="11" fill="#475569">page_no / 章节名（位置标识）</text>
+    <text x="40" y="558" font-size="11" fill="#475569">extract_status（提取状态）</text>
+    <text x="40" y="596" font-size="12" font-weight="bold" fill="#991b1b">失败约束</text>
+    <text x="40" y="618" font-size="11" fill="#7f1d1d">不允许只返回空结果</text>
+    <text x="40" y="638" font-size="11" fill="#7f1d1d">缺失字段标 missing</text>
+    <text x="40" y="658" font-size="11" fill="#7f1d1d">必须记录 parse_error</text>
+
+    <!-- 主流程 -->
+    <rect x="545" y="40" width="430" height="64" rx="8" fill="#eaf1fe" stroke="#2563eb"/>
+    <text x="760" y="62" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e3a8a">输入：审批单 + 全部附件</text>
+    <text x="760" y="82" text-anchor="middle" font-size="11" fill="#475569">审批单元数据（approval_tasks）+ 全部已下载附件（approval_attachments）</text>
+
+    <text x="760" y="98" text-anchor="middle" font-size="10" fill="#7f1d1d">前置校验：附件 &gt; UPLOAD_MAX_MB=50 或 PDF 页数 &gt; MAX_PDF_PAGES=200 → blocked</text>
+    <polygon points="760,132 846,168 760,204 674,168" fill="#fdf3e3" stroke="#b45309"/>
+    <text x="760" y="172" text-anchor="middle" font-size="12" font-weight="bold" fill="#92400e">按扩展名分发</text>
+    <line x1="760" y1="104" x2="760" y2="126" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m3a)"/>
+
+    <line x1="690" y1="180" x2="635" y2="224" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m3a)"/>
+    <text x="648" y="196" font-size="10" fill="#475569">.docx</text>
+    <line x1="760" y1="204" x2="835" y2="224" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m3a)"/>
+    <text x="782" y="218" font-size="10" fill="#475569">.pdf</text>
+    <line x1="830" y1="180" x2="1020" y2="224" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m3a)"/>
+    <text x="930" y="196" font-size="10" fill="#475569">.png/.jpg</text>
+
+    <rect x="540" y="228" width="180" height="64" rx="8" fill="#e6f7f5" stroke="#0d9488"/>
+    <text x="630" y="250" text-anchor="middle" font-size="12" font-weight="bold" fill="#115e59">parse_docx</text>
+    <text x="630" y="270" text-anchor="middle" font-size="10" fill="#475569">python-docx</text>
+    <text x="630" y="284" text-anchor="middle" font-size="10" fill="#475569">段落+表格，内嵌图片二期</text>
+
+    <rect x="745" y="228" width="180" height="64" rx="8" fill="#fff1e8" stroke="#ea580c"/>
+    <text x="835" y="250" text-anchor="middle" font-size="12" font-weight="bold" fill="#9a3412">parse_pdf</text>
+    <text x="835" y="270" text-anchor="middle" font-size="10" fill="#475569">逐页判断</text>
+    <text x="835" y="284" text-anchor="middle" font-size="10" fill="#475569">文本层</text>
+
+    <rect x="950" y="228" width="140" height="64" rx="8" fill="#e6f7f5" stroke="#0d9488"/>
+    <text x="1020" y="250" text-anchor="middle" font-size="12" font-weight="bold" fill="#115e59">ocr_image</text>
+    <text x="1020" y="270" text-anchor="middle" font-size="10" fill="#475569">rapidocr</text>
+    <text x="1020" y="284" text-anchor="middle" font-size="10" fill="#475569">识别图片</text>
+
+    <line x1="835" y1="292" x2="665" y2="348" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m3a)"/>
+    <text x="700" y="320" font-size="10" fill="#475569">有文本层页</text>
+    <line x1="835" y1="292" x2="925" y2="348" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m3a)"/>
+    <text x="862" y="320" font-size="10" fill="#475569">无文本层页</text>
+
+    <rect x="540" y="352" width="240" height="54" rx="8" fill="#e6f7f5" stroke="#0d9488"/>
+    <text x="660" y="374" text-anchor="middle" font-size="12" font-weight="bold" fill="#115e59">pdfplumber 按页提取</text>
+    <text x="660" y="394" text-anchor="middle" font-size="10" fill="#475569">有文本层页 · 保留 page_no</text>
+
+    <rect x="805" y="352" width="240" height="54" rx="8" fill="#f1ebfe" stroke="#7c3aed"/>
+    <text x="925" y="374" text-anchor="middle" font-size="12" font-weight="bold" fill="#5b21b6">PyMuPDF 渲染 + ocr_pdf_page</text>
+    <text x="925" y="394" text-anchor="middle" font-size="10" fill="#475569">无文本层页：OCR 补全文本层</text>
+
+    <line x1="1020" y1="292" x2="1072" y2="292" stroke="#7c3aed" stroke-width="1.5"/>
+    <line x1="1072" y1="292" x2="1072" y2="455" stroke="#7c3aed" stroke-width="1.5"/>
+    <line x1="1072" y1="455" x2="1049" y2="455" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#m3p)"/>
+    <line x1="925" y1="406" x2="925" y2="426" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#m3p)"/>
+
+    <rect x="805" y="430" width="240" height="50" rx="8" fill="#fdeeee" stroke="#dc2626"/>
+    <text x="925" y="450" text-anchor="middle" font-size="12" font-weight="bold" fill="#991b1b">OCR 质量判定</text>
+    <text x="925" y="468" text-anchor="middle" font-size="10" fill="#7f1d1d">OCR_CONFIDENCE_THRESHOLD：过滤 score&lt;0.6 行；无有效行/平均分&lt;0.6 → 图片无法识别</text>
+    <line x1="805" y1="455" x2="789" y2="455" stroke="#dc2626" stroke-width="1.5" marker-end="url(#m3r)"/>
+
+    <rect x="540" y="430" width="240" height="50" rx="8" fill="#fdeeee" stroke="#dc2626"/>
+    <text x="660" y="450" text-anchor="middle" font-size="12" font-weight="bold" fill="#991b1b">图片无法识别</text>
+    <text x="660" y="468" text-anchor="middle" font-size="10" fill="#7f1d1d">parse_error → failed → blocked</text>
+
+    <line x1="540" y1="292" x2="520" y2="292" stroke="#5b6b82" stroke-width="1.5"/>
+    <line x1="520" y1="292" x2="520" y2="496" stroke="#5b6b82" stroke-width="1.5"/>
+    <line x1="520" y1="496" x2="544" y2="496" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m3a)"/>
+    <line x1="660" y1="406" x2="660" y2="496" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m3a)"/>
+    <line x1="925" y1="480" x2="925" y2="496" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m3a)"/>
+
+    <rect x="540" y="500" width="505" height="56" rx="8" fill="#f8fafc" stroke="#334155"/>
+    <text x="792" y="522" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e293b">合并全部附件为完整文本 DocumentText</text>
+    <text x="792" y="542" text-anchor="middle" font-size="11" fill="#475569">附件就是合同正文：按附件顺序连续编页；docx 无真实分页，以章节名定位（见附图）</text>
+
+    <polygon points="760,584 846,620 760,656 674,620" fill="#fdf3e3" stroke="#b45309"/>
+    <text x="760" y="624" text-anchor="middle" font-size="12" font-weight="bold" fill="#92400e">文本是否为空？</text>
+    <line x1="760" y1="556" x2="760" y2="580" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m3a)"/>
+
+    <line x1="690" y1="644" x2="560" y2="694" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#m3p)"/>
+    <text x="598" y="666" font-size="10" fill="#7c3aed">否（有内容）</text>
+    <line x1="830" y1="644" x2="960" y2="694" stroke="#dc2626" stroke-width="1.5" marker-end="url(#m3r)"/>
+    <text x="876" y="666" font-size="10" fill="#dc2626">是（空文档）</text>
+
+    <rect x="500" y="706" width="420" height="104" rx="8" fill="#f1ebfe" stroke="#7c3aed"/>
+    <text x="710" y="728" text-anchor="middle" font-size="13" font-weight="bold" fill="#5b21b6">LLM 字段抽取（接入大模型）</text>
+    <text x="710" y="750" text-anchor="middle" font-size="11" fill="#475569">extract_contract_fields(...) → parse_agent（失败自动重试 1 次）</text>
+    <text x="710" y="770" text-anchor="middle" font-size="11" fill="#475569">对清洗筛选后的精华文本抽取 16 字段（8 基本 + 8 条款）</text>
+    <text x="710" y="790" text-anchor="middle" font-size="11" fill="#475569">输出 JSON：field_name / field_value / raw_text / page_no / extract_status</text>
+
+    <rect x="940" y="706" width="150" height="104" rx="8" fill="#fdeeee" stroke="#dc2626"/>
+    <text x="1015" y="728" text-anchor="middle" font-size="12" font-weight="bold" fill="#991b1b">mark_parse_failed</text>
+    <text x="1015" y="750" text-anchor="middle" font-size="10" fill="#7f1d1d">parse_error=文档内容为空</text>
+    <text x="1015" y="770" text-anchor="middle" font-size="10" fill="#7f1d1d">parse_status=failed</text>
+    <text x="1015" y="790" text-anchor="middle" font-size="10" font-weight="bold" fill="#991b1b">→ blocked</text>
+
+    <line x1="710" y1="810" x2="710" y2="852" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m3a)"/>
+    <rect x="500" y="856" width="460" height="70" rx="8" fill="#eaf1fe" stroke="#2563eb"/>
+    <text x="730" y="878" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e3a8a">validate_parse_result：三层判定</text>
+    <text x="730" y="898" text-anchor="middle" font-size="10" fill="#475569">① 空白/零页 → failed(文档内容为空) → blocked</text>
+    <text x="730" y="914" text-anchor="middle" font-size="10" fill="#475569">② 16 字段全 missing 或 LLM 重试后仍空 → failed → blocked；③ 部分缺失 → success + extract_status=missing</text>
+
+    <line x1="730" y1="926" x2="730" y2="962" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m3a)"/>
+    <rect x="520" y="966" width="420" height="64" rx="8" fill="#e6f7f5" stroke="#0d9488"/>
+    <text x="730" y="988" text-anchor="middle" font-size="13" font-weight="bold" fill="#115e59">save_parse_result → contract_parses</text>
+    <text x="730" y="1008" text-anchor="middle" font-size="11" fill="#475569">basic_info_json / clause_info_json / parse_status / parse_error</text>
+
+    <line x1="730" y1="1030" x2="730" y2="1062" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m3a)"/>
+    <rect x="560" y="1066" width="340" height="44" rx="22" fill="#0d9488"/>
+    <text x="730" y="1093" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff">输出 ContractParseResult → review_node</text>
+    <text x="760" y="1132" text-anchor="middle" font-size="11" fill="#475569">重试语义：LLM 失败自动重试 1 次（指数退避）；blocked 重试上限 MAX_RETRY_COUNT=3（.env 可调，按 task_logs 统计）；重跑整个 parse_node，幂等覆盖旧记录</text>
+  </svg>
+  </div>
+  <div class="svg-wrap" style="margin-top:14px">
+    <div class="sub-diagram-title">模块 2 附 · 长文本清洗筛选全流程（LLM 前置处理）</div>
+    <svg viewBox="0 0 1100 980" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="m3ca" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+          <path d="M1 2L8 5L1 8" fill="none" stroke="#5b6b82" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+        <marker id="m3cp" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+          <path d="M1 2L8 5L1 8" fill="none" stroke="#7c3aed" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+      </defs>
+
+      <!-- 左侧筛选原则面板 -->
+      <rect x="20" y="20" width="250" height="760" rx="10" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="6 3"/>
+      <text x="40" y="46" font-size="13" font-weight="bold" fill="#1e3a8a">筛选原则</text>
+      <text x="40" y="64" font-size="11" fill="#475569">交给 LLM 的必须是精华</text>
+      <text x="40" y="94" font-size="12" font-weight="bold" fill="#0d9488">保留（候选文本）</text>
+      <text x="40" y="116" font-size="11" fill="#475569">基本信息候选区</text>
+      <text x="40" y="136" font-size="11" fill="#475569">（首部/编号/主体/金额/时间）</text>
+      <text x="40" y="160" font-size="11" fill="#475569">8 个条款命中块</text>
+      <text x="40" y="180" font-size="11" fill="#475569">每块原文片段 + 位置标识</text>
+      <line x1="40" y1="200" x2="250" y2="200" stroke="#e2e8f0"/>
+      <text x="40" y="228" font-size="12" font-weight="bold" fill="#dc2626">丢弃（无用点）</text>
+      <text x="40" y="250" font-size="11" fill="#475569">页眉页脚 / 水印 / 页码</text>
+      <text x="40" y="272" font-size="11" fill="#475569">签署页 / 通知送达条款</text>
+      <text x="40" y="294" font-size="11" fill="#475569">附件清单 / 发票 / 开户行</text>
+      <text x="40" y="316" font-size="11" fill="#475569">空行与重复抬头</text>
+      <line x1="40" y1="336" x2="250" y2="336" stroke="#e2e8f0"/>
+      <text x="40" y="364" font-size="12" font-weight="bold" fill="#334155">可配置项</text>
+      <text x="40" y="386" font-size="11" fill="#475569">MAX_LLM_CHARS：超长阈值（仅计候选文本）</text>
+      <text x="40" y="406" font-size="11" fill="#475569">OCR_CONFIDENCE_THRESHOLD：OCR 置信度</text>
+      <text x="40" y="426" font-size="11" fill="#475569">HEADING_SCORE_THRESHOLD / HEADING_MAX_LENGTH：标题判定</text>
+      <text x="40" y="446" font-size="11" fill="#475569">CLAUSE_KEYWORDS：条款关键词（逗号分隔）</text>
+
+      <!-- 主流程 -->
+      <rect x="460" y="20" width="480" height="50" rx="8" fill="#eaf1fe" stroke="#2563eb"/>
+      <text x="700" y="42" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e3a8a">输入：合并后的完整 DocumentText</text>
+      <text x="700" y="60" text-anchor="middle" font-size="10" fill="#475569">全部附件连续编页（merge_documents）→ 文本块带 page_no / paragraph_index / style</text>
+
+      <line x1="700" y1="70" x2="700" y2="92" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m3ca)"/>
+      <rect x="460" y="96" width="480" height="64" rx="8" fill="#eaf1fe" stroke="#2563eb"/>
+      <text x="700" y="118" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e3a8a">① 文本清洗 clean_document_text</text>
+      <text x="700" y="140" text-anchor="middle" font-size="11" fill="#475569">去页眉页脚 / 水印 / 页码 / 重复抬头，压缩空行 → 干净文本块</text>
+
+      <line x1="700" y1="160" x2="700" y2="182" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m3ca)"/>
+      <rect x="460" y="186" width="480" height="76" rx="8" fill="#fdf3e3" stroke="#b45309"/>
+      <text x="700" y="208" text-anchor="middle" font-size="13" font-weight="bold" fill="#92400e">② 标题识别 + 转 Markdown（detect_headings → to_markdown）</text>
+      <text x="700" y="230" text-anchor="middle" font-size="10" fill="#475569">三级信号：DOCX Heading 样式 / PDF 书签与字号 / 文本模式（第 X 章、一、二、8 条款关键词）</text>
+      <text x="700" y="248" text-anchor="middle" font-size="10" fill="#475569">标题行加 #/##，表格转 | 列 | 列 |；仅内存中间格式，不落盘</text>
+
+      <line x1="700" y1="262" x2="700" y2="284" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m3ca)"/>
+      <rect x="460" y="288" width="480" height="72" rx="8" fill="#e0f2fe" stroke="#0891b2"/>
+      <text x="700" y="310" text-anchor="middle" font-size="13" font-weight="bold" fill="#155e75">③ 章节提取 split_markdown_sections</text>
+      <text x="700" y="332" text-anchor="middle" font-size="10" fill="#475569">按 #/## 标题切块：标题到下一个同级/更高级标题之间为一块</text>
+      <text x="700" y="350" text-anchor="middle" font-size="10" fill="#475569">每块 {clause_name, raw_text, page_no, paragraph_index, extract_status}；无标题退化为按页分块</text>
+
+      <line x1="700" y1="360" x2="700" y2="382" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m3ca)"/>
+      <rect x="460" y="386" width="480" height="84" rx="8" fill="#e6f7f5" stroke="#0d9488"/>
+      <text x="700" y="408" text-anchor="middle" font-size="13" font-weight="bold" fill="#115e59">④ 无用点过滤 filter_relevant_text</text>
+      <text x="700" y="430" text-anchor="middle" font-size="10" fill="#475569">保留：基本信息候选区（首部优先，金额/时间条款补充）+ 8 个条款命中块</text>
+      <text x="700" y="448" text-anchor="middle" font-size="10" fill="#475569">丢弃：签署页 / 通知条款 / 附件清单 / 发票 / 开户行</text>
+      <text x="700" y="464" text-anchor="middle" font-size="10" fill="#64748b">关键词清单 clause_keywords 可配置，规则引擎可复用</text>
+
+      <line x1="700" y1="470" x2="700" y2="502" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m3ca)"/>
+      <polygon points="700,512 796,550 700,588 604,550" fill="#fdf3e3" stroke="#b45309"/>
+      <text x="700" y="554" text-anchor="middle" font-size="12" font-weight="bold" fill="#92400e">候选文本是否超过</text>
+      <text x="700" y="570" text-anchor="middle" font-size="12" font-weight="bold" fill="#92400e">MAX_LLM_CHARS？</text>
+
+      <line x1="604" y1="550" x2="615" y2="550" stroke="#5b6b82" stroke-width="1.5"/>
+      <line x1="615" y1="550" x2="615" y2="642" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m3ca)"/>
+      <text x="626" y="576" font-size="10" fill="#475569">未超</text>
+      <line x1="796" y1="550" x2="940" y2="550" stroke="#7c3aed" stroke-width="1.5"/>
+      <line x1="940" y1="550" x2="940" y2="642" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#m3cp)"/>
+      <text x="806" y="576" font-size="10" fill="#7c3aed">超长</text>
+
+      <rect x="450" y="646" width="330" height="70" rx="8" fill="#f1ebfe" stroke="#7c3aed"/>
+      <text x="615" y="668" text-anchor="middle" font-size="13" font-weight="bold" fill="#5b21b6">单次抽取（正常）</text>
+      <text x="615" y="690" text-anchor="middle" font-size="10" fill="#475569">LLM 一次抽 16 字段</text>
+      <text x="615" y="706" text-anchor="middle" font-size="10" fill="#64748b">parse_agent</text>
+
+      <rect x="800" y="646" width="280" height="70" rx="8" fill="#f1ebfe" stroke="#7c3aed"/>
+      <text x="940" y="668" text-anchor="middle" font-size="13" font-weight="bold" fill="#5b21b6">分块抽取（超长）</text>
+      <text x="940" y="690" text-anchor="middle" font-size="10" fill="#475569">基本信息一次 + 条款每 2-3 块一轮</text>
+      <text x="940" y="706" text-anchor="middle" font-size="10" fill="#64748b">多轮结果合并</text>
+
+      <line x1="615" y1="716" x2="660" y2="752" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m3ca)"/>
+      <line x1="940" y1="716" x2="760" y2="752" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m3ca)"/>
+      <rect x="460" y="756" width="480" height="64" rx="8" fill="#eaf1fe" stroke="#2563eb"/>
+      <text x="700" y="778" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e3a8a">⑤ 校验与合并 validate_parse_result（三层判定）</text>
+      <text x="700" y="800" text-anchor="middle" font-size="10" fill="#475569">全 missing / LLM 空结果 → failed → blocked；部分缺失 → success + missing；多轮合并：金额取最大、唯一字段留一条、候选留档</text>
+
+      <line x1="700" y1="820" x2="700" y2="846" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m3ca)"/>
+      <rect x="470" y="850" width="460" height="50" rx="22" fill="#0d9488"/>
+      <text x="700" y="880" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff">输出：精华候选文本 + ContractParseResult → contract_parses</text>
+
+      <rect x="320" y="922" width="760" height="30" rx="8" fill="#f1f5f9"/>
+      <rect x="340" y="930" width="14" height="14" rx="3" fill="#2563eb"/><text x="362" y="941" font-size="11" fill="#475569">清洗</text>
+      <rect x="420" y="930" width="14" height="14" rx="3" fill="#b45309"/><text x="442" y="941" font-size="11" fill="#475569">标题识别+转MD</text>
+      <rect x="540" y="930" width="14" height="14" rx="3" fill="#0891b2"/><text x="562" y="941" font-size="11" fill="#475569">章节提取</text>
+      <rect x="650" y="930" width="14" height="14" rx="3" fill="#0d9488"/><text x="672" y="941" font-size="11" fill="#475569">过滤</text>
+      <rect x="730" y="930" width="14" height="14" rx="3" fill="#7c3aed"/><text x="752" y="941" font-size="11" fill="#475569">LLM 抽取</text>
+      <rect x="830" y="930" width="14" height="14" rx="3" fill="#2563eb"/><text x="852" y="941" font-size="11" fill="#475569">校验落库</text>
+      <line x1="940" y1="937" x2="976" y2="937" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m3ca)"/><text x="986" y="941" font-size="11" fill="#475569">正常流转</text>
+    </svg>
+  </div>
+  <div class="example-block">
+    <h3>解析样例（demo 演示用）</h3>
+    <p>关键前提：16 个字段来自<strong>合同附件正文</strong>，不是审批单表单。审批单只提供元数据（谁申请、审什么、挂了哪些附件）；附件本身就是合同，解析全部附件合并为一个文本后，LLM 一次抽取 16 个字段。</p>
+    <details open>
+      <summary>1. 审批单样例：内容很少，只有元数据</summary>
+<pre>{
+  "instance_id": "APP-2026-0088",
+  "approval_code": "HT-2026-0088",
+  "approval_title": "供应商采购合同审批",
+  "applicant_name": "张伟",
+  "application_time": "2026-08-17 09:30:00",
+  "attachments": [
+    {"attachment_id": "ATT-001", "file_name": "采购合同2026.docx", "file_type": "docx"},
+    {"attachment_id": "ATT-002", "file_name": "采购合同2026-扫描件.png", "file_type": "png"}
+  ]
+}</pre>
+    </details>
+    <details>
+      <summary>2. 合同附件正文节选：16 个字段的提取来源</summary>
+<pre>合同编号：HT-2026-0088
+甲方（签约主体）：北京星辰科技有限公司
+乙方（对方名称）：深圳启明电子有限公司
+
+第二条 合同金额：合同总金额为人民币 1,200,000 元（壹佰贰拾万元整），币种为人民币。
+第三条 付款条款：合同签订后 10 个工作日内支付预付款 60%；验收合格后 30 日内支付剩余 40%。
+第四条 交付条款：乙方应于 2026-12-31 前完成全部货物交付。
+第五条 验收条款：甲方应在乙方交付后 15 个工作日内组织验收。
+第六条 违约条款：任何一方违约，应按合同金额的 10% 支付违约金。
+第七条 争议解决条款：双方争议由合同签订地人民法院管辖。
+第九条 知识产权条款：软件相关知识产权归甲方所有。
+第十条 数据条款：乙方处理甲方数据应遵守数据安全法及相关规定。
+
+（正文中未出现保密条款 → extract_status=missing）</pre>
+    </details>
+    <details>
+      <summary>3. LLM 抽取出的 16 个字段（parse_agent 输出样例）</summary>
+<pre>[
+  {"field_name": "合同标题", "field_value": "供应商采购合同", "raw_text": "供应商采购合同", "page_no": 1, "extract_status": "extracted"},
+  {"field_name": "合同编号", "field_value": "HT-2026-0088", "raw_text": "合同编号：HT-2026-0088", "page_no": 1, "extract_status": "extracted"},
+  {"field_name": "签约主体", "field_value": "北京星辰科技有限公司", "raw_text": "甲方（签约主体）：北京星辰科技有限公司", "page_no": 1, "extract_status": "extracted"},
+  {"field_name": "对方名称", "field_value": "深圳启明电子有限公司", "raw_text": "乙方（对方名称）：深圳启明电子有限公司", "page_no": 1, "extract_status": "extracted"},
+  {"field_name": "金额", "field_value": "1200000", "raw_text": "合同总金额为人民币 1,200,000 元", "page_no": 2, "extract_status": "extracted"},
+  {"field_name": "币种", "field_value": "人民币", "raw_text": "币种为人民币", "page_no": 2, "extract_status": "extracted"},
+  {"field_name": "生效时间", "field_value": "2026-08-20", "raw_text": "本合同自 2026-08-20 起生效", "page_no": 2, "extract_status": "extracted"},
+  {"field_name": "到期时间", "field_value": "2027-08-19", "raw_text": "有效期至 2027-08-19", "page_no": 2, "extract_status": "extracted"},
+  {"field_name": "付款条款", "field_value": "预付款 60%，验收后 30 日付尾款 40%", "raw_text": "第三条 付款条款：...支付预付款 60%...支付剩余 40%", "page_no": 2, "extract_status": "extracted"},
+  {"field_name": "交付条款", "field_value": "2026-12-31 前完成交付", "raw_text": "第四条 交付条款：乙方应于 2026-12-31 前完成全部货物交付", "page_no": 2, "extract_status": "extracted"},
+  {"field_name": "验收条款", "field_value": "交付后 15 个工作日内组织验收", "raw_text": "第五条 验收条款：甲方应在乙方交付后 15 个工作日内组织验收", "page_no": 3, "extract_status": "extracted"},
+  {"field_name": "违约条款", "field_value": "违约金为合同金额 10%", "raw_text": "第六条 违约条款：任何一方违约，应按合同金额的 10% 支付违约金", "page_no": 3, "extract_status": "extracted"},
+  {"field_name": "争议解决条款", "field_value": "合同签订地人民法院管辖", "raw_text": "第七条 争议解决条款：双方争议由合同签订地人民法院管辖", "page_no": 3, "extract_status": "extracted"},
+  {"field_name": "知识产权条款", "field_value": "知识产权归甲方所有", "raw_text": "第九条 知识产权条款：软件相关知识产权归甲方所有", "page_no": 4, "extract_status": "extracted"},
+  {"field_name": "数据条款", "field_value": "遵守数据安全法", "raw_text": "第十条 数据条款：乙方处理甲方数据应遵守数据安全法", "page_no": 4, "extract_status": "extracted"},
+  {"field_name": "保密条款", "field_value": "", "raw_text": "", "page_no": 0, "extract_status": "missing"}
+]</pre>
+    </details>
+    <details>
+      <summary>4. clause_info_json 结构化样例（与项目字段完全对齐）</summary>
+<pre>{
+  "clauses": [
+    {
+      "clause_name": "付款条款",
+      "raw_text": "第三条 付款条款：合同签订后 10 个工作日内支付预付款 60%；验收合格后 30 日内支付剩余 40%。",
+      "page_no": 2,
+      "extract_status": "extracted",
+      "structured": {"预付款比例": "60%", "付款周期": "验收合格后 30 日内付尾款"}
+    },
+    {
+      "clause_name": "交付条款",
+      "raw_text": "第四条 交付条款：乙方应于 2026-12-31 前完成全部货物交付。",
+      "page_no": 2,
+      "extract_status": "extracted",
+      "structured": {"交付期限": "2026-12-31", "交付物": "全部货物"}
+    },
+    {
+      "clause_name": "验收条款",
+      "raw_text": "第五条 验收条款：甲方应在乙方交付后 15 个工作日内组织验收。",
+      "page_no": 3,
+      "extract_status": "extracted",
+      "structured": {"验收时限": "交付后 15 个工作日", "验收标准": null}
+    },
+    {
+      "clause_name": "违约条款",
+      "raw_text": "第六条 违约条款：任何一方违约，应按合同金额的 10% 支付违约金。",
+      "page_no": 3,
+      "extract_status": "extracted",
+      "structured": {"违约金比例": "10%", "违约情形": "任何一方违约"}
+    },
+    {
+      "clause_name": "争议解决条款",
+      "raw_text": "第七条 争议解决条款：双方争议由合同签订地人民法院管辖。",
+      "page_no": 3,
+      "extract_status": "extracted",
+      "structured": {"管辖地": "合同签订地人民法院", "解决方式": "诉讼"}
+    },
+    {
+      "clause_name": "知识产权条款",
+      "raw_text": "第九条 知识产权条款：软件相关知识产权归甲方所有。",
+      "page_no": 4,
+      "extract_status": "extracted",
+      "structured": {"知识产权归属": "甲方", "范围": "软件相关知识产权"}
+    },
+    {
+      "clause_name": "数据条款",
+      "raw_text": "第十条 数据条款：乙方处理甲方数据应遵守数据安全法及相关规定。",
+      "page_no": 4,
+      "extract_status": "extracted",
+      "structured": {"合规要求": "数据安全法及相关规定", "数据处理方": "乙方"}
+    },
+    {
+      "clause_name": "保密条款",
+      "raw_text": "",
+      "page_no": 0,
+      "extract_status": "missing",
+      "structured": {}
+    }
+  ]
+}</pre>
+    </details>
+  </div>
+  <p class="legend-note">绿色为文本提取，橙色为分发判断，紫色为 LLM 接入点，红色为失败路径；失败一律进入 blocked 由 admin 重试。</p>
+</section>
+
+<section id="m4" class="diagram">
+  <h2><span class="badge">模块 3</span>规则匹配：条款信息是怎么被命中、怎么汇总成风险的</h2>
+  <p class="intro">拆解模块 1 的第 9 步 review_node。规则引擎把解析结果（basic_info / clauses / 原文 pages）按 match_mode 分发：regex/numeric/缺失检查用代码确定性匹配，llm 交给大模型语义判断；代码命中还要做 LLM 复核过滤误报，最后生成 rule_hits、总风险、关注点和中文摘要。</p>
+  <div class="svg-wrap">
+  <svg viewBox="0 0 1100 1020" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="m4a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+        <path d="M1 2L8 5L1 8" fill="none" stroke="#5b6b82" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </marker>
+      <marker id="m4p" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+        <path d="M1 2L8 5L1 8" fill="none" stroke="#7c3aed" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </marker>
+    </defs>
+
+    <!-- 左侧 11 条规则清单 -->
+    <rect x="20" y="40" width="270" height="900" rx="10" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="6 3"/>
+    <text x="40" y="66" font-size="13" font-weight="bold" fill="#1e3a8a">11 条审查规则（2.4.6）</text>
+    <text x="40" y="88" font-size="10" fill="#64748b">rule_code / match_mode</text>
+    <line x1="40" y1="98" x2="270" y2="98" stroke="#e2e8f0"/>
+    <g font-size="11" fill="#475569">
+      <text x="40" y="120">RULE_PREPAY_RATIO  预付款比例</text><text x="40" y="136" font-size="10" fill="#0d9488">numeric 阈值</text>
+      <text x="40" y="166">RULE_PAYMENT_CYCLE  付款周期</text><text x="40" y="182" font-size="10" fill="#0d9488">numeric 阈值</text>
+      <text x="40" y="212">RULE_AUTO_RENEW  自动续约</text><text x="40" y="228" font-size="10" fill="#2563eb">regex</text>
+      <text x="40" y="258">RULE_BREACH_LIABILITY  违约责任</text><text x="40" y="274" font-size="10" fill="#7c3aed">regex + llm</text>
+      <text x="40" y="304">RULE_JURISDICTION  管辖地</text><text x="40" y="320" font-size="10" fill="#2563eb">regex</text>
+      <text x="40" y="350">RULE_PARTY_MISSING  主体信息缺失</text><text x="40" y="366" font-size="10" fill="#b45309">缺失检查</text>
+      <text x="40" y="396">RULE_AMOUNT_MISSING  金额缺失</text><text x="40" y="412" font-size="10" fill="#b45309">缺失检查</text>
+      <text x="40" y="442">RULE_CONFIDENTIAL_MISSING  保密缺失</text><text x="40" y="458" font-size="10" fill="#2563eb">regex</text>
+      <text x="40" y="488">RULE_DATA_PROCESSING  数据处理</text><text x="40" y="504" font-size="10" fill="#7c3aed">regex + llm</text>
+      <text x="40" y="534">RULE_IP_RIGHTS  知识产权</text><text x="40" y="550" font-size="10" fill="#7c3aed">regex + llm</text>
+      <text x="40" y="580">RULE_ACCEPTANCE_MISSING  验收标准缺失</text><text x="40" y="596" font-size="10" fill="#2563eb">regex</text>
+    </g>
+    <line x1="40" y1="620" x2="270" y2="620" stroke="#e2e8f0"/>
+    <text x="40" y="646" font-size="12" font-weight="bold" fill="#334155">命中输出字段</text>
+    <text x="40" y="668" font-size="11" fill="#475569">rule_name / risk_level</text>
+    <text x="40" y="688" font-size="11" fill="#475569">evidence_text（命中证据）</text>
+    <text x="40" y="708" font-size="11" fill="#475569">evidence_position（位置）</text>
+    <text x="40" y="728" font-size="11" fill="#475569">suggestion_text（建议）</text>
+
+    <!-- 主流程 -->
+    <rect x="500" y="40" width="460" height="54" rx="8" fill="#eaf1fe" stroke="#2563eb"/>
+    <text x="730" y="62" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e3a8a">输入：ContractParseResult</text>
+    <text x="730" y="82" text-anchor="middle" font-size="11" fill="#475569">basic_info + clauses + 原文 pages（来自模块 2）</text>
+
+    <rect x="500" y="120" width="460" height="54" rx="8" fill="#e6f7f5" stroke="#0d9488"/>
+    <text x="730" y="142" text-anchor="middle" font-size="13" font-weight="bold" fill="#115e59">规则加载：load_enabled_rules()</text>
+    <text x="730" y="162" text-anchor="middle" font-size="11" fill="#475569">review_rules；seed_default_rules() 幂等写入 11 条（rule_status=enabled）</text>
+
+    <line x1="730" y1="174" x2="730" y2="206" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m4a)"/>
+    <polygon points="730,212 812,248 730,284 648,248" fill="#fdf3e3" stroke="#b45309"/>
+    <text x="730" y="252" text-anchor="middle" font-size="12" font-weight="bold" fill="#92400e">按 match_mode 分发</text>
+
+    <line x1="660" y1="266" x2="610" y2="316" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m4a)"/>
+    <line x1="800" y1="266" x2="850" y2="316" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m4a)"/>
+    <line x1="660" y1="284" x2="610" y2="356" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m4a)"/>
+    <line x1="800" y1="284" x2="850" y2="356" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#m4p)"/>
+
+    <rect x="500" y="320" width="220" height="66" rx="8" fill="#eaf1fe" stroke="#2563eb"/>
+    <text x="610" y="340" text-anchor="middle" font-size="12" font-weight="bold" fill="#1e3a8a">regex：match_regex</text>
+    <text x="610" y="358" text-anchor="middle" font-size="10" fill="#475569">自动续约/违约/管辖地/保密/数据/知产/验收</text>
+    <text x="610" y="374" text-anchor="middle" font-size="10" fill="#0d9488">→ HitMatch（证据+位置）</text>
+
+    <rect x="740" y="320" width="220" height="66" rx="8" fill="#eaf1fe" stroke="#2563eb"/>
+    <text x="850" y="340" text-anchor="middle" font-size="12" font-weight="bold" fill="#1e3a8a">numeric：match_numeric</text>
+    <text x="850" y="358" text-anchor="middle" font-size="10" fill="#475569">预付款比例/付款周期阈值比较</text>
+    <text x="850" y="374" text-anchor="middle" font-size="10" fill="#0d9488">→ HitMatch（证据+位置）</text>
+
+    <rect x="500" y="412" width="220" height="66" rx="8" fill="#fff1e8" stroke="#ea580c"/>
+    <text x="610" y="432" text-anchor="middle" font-size="12" font-weight="bold" fill="#9a3412">缺失检查</text>
+    <text x="610" y="450" text-anchor="middle" font-size="10" fill="#475569">主体信息缺失 / 金额缺失</text>
+    <text x="610" y="466" text-anchor="middle" font-size="10" fill="#0d9488">→ HitMatch</text>
+
+    <rect x="740" y="412" width="220" height="66" rx="8" fill="#f1ebfe" stroke="#7c3aed"/>
+    <text x="850" y="432" text-anchor="middle" font-size="12" font-weight="bold" fill="#5b21b6">llm：judge_semantic_rules</text>
+    <text x="850" y="450" text-anchor="middle" font-size="10" fill="#475569">违约/数据处理/知产 语义判断</text>
+    <text x="850" y="466" text-anchor="middle" font-size="10" fill="#7c3aed">→ SemanticVerdict</text>
+
+    <line x1="610" y1="386" x2="700" y2="502" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m4a)"/>
+    <line x1="850" y1="386" x2="760" y2="502" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m4a)"/>
+    <line x1="610" y1="478" x2="700" y2="502" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m4a)"/>
+    <line x1="850" y1="478" x2="760" y2="502" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#m4p)"/>
+
+    <rect x="500" y="508" width="460" height="54" rx="8" fill="#f1ebfe" stroke="#7c3aed"/>
+    <text x="730" y="530" text-anchor="middle" font-size="13" font-weight="bold" fill="#5b21b6">review_code_hits：LLM 复核代码命中，过滤明显误报</text>
+    <text x="730" y="550" text-anchor="middle" font-size="11" fill="#475569">代码规则命中的证据再交 LLM 判断一次是否成立</text>
+
+    <line x1="730" y1="562" x2="730" y2="592" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m4a)"/>
+    <rect x="500" y="598" width="460" height="54" rx="8" fill="#e6f7f5" stroke="#0d9488"/>
+    <text x="730" y="620" text-anchor="middle" font-size="13" font-weight="bold" fill="#115e59">save_hits → rule_hits</text>
+    <text x="730" y="640" text-anchor="middle" font-size="11" fill="#475569">rule_id / evidence_text / evidence_position / hit_status</text>
+
+    <line x1="730" y1="652" x2="730" y2="682" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m4a)"/>
+    <rect x="500" y="688" width="460" height="54" rx="8" fill="#fff1e8" stroke="#ea580c"/>
+    <text x="730" y="710" text-anchor="middle" font-size="13" font-weight="bold" fill="#9a3412">aggregate_risk：按命中风险等级聚合</text>
+    <text x="730" y="730" text-anchor="middle" font-size="11" fill="#475569">overall_risk_level：低 / 中 / 高</text>
+
+    <line x1="730" y1="742" x2="730" y2="772" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m4a)"/>
+    <rect x="500" y="778" width="460" height="66" rx="8" fill="#eaf1fe" stroke="#2563eb"/>
+    <text x="730" y="800" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e3a8a">save_review_result → review_results</text>
+    <text x="730" y="820" text-anchor="middle" font-size="11" fill="#475569">overall_risk_level / summary_text（中文摘要）/ focus_points_json（关注点）/ comment_text</text>
+
+    <line x1="730" y1="844" x2="730" y2="878" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m4a)"/>
+    <rect x="520" y="884" width="420" height="50" rx="22" fill="#7c3aed"/>
+    <text x="730" y="914" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff">输出 → writeback_node（模块 1 第 11 步）</text>
+
+    <rect x="500" y="952" width="460" height="30" rx="8" fill="#f1f5f9"/>
+    <rect x="520" y="960" width="14" height="14" rx="3" fill="#2563eb"/><text x="542" y="971" font-size="11" fill="#475569">代码确定性匹配</text>
+    <rect x="660" y="960" width="14" height="14" rx="3" fill="#7c3aed"/><text x="682" y="971" font-size="11" fill="#475569">LLM 语义判断</text>
+    <rect x="790" y="960" width="14" height="14" rx="3" fill="#ea580c"/><text x="812" y="971" font-size="11" fill="#475569">风险聚合</text>
+  </svg>
+  </div>
+  <p class="legend-note">输出格式对应 2.4.11：总风险等级 + 命中规则列表 + 中文摘要 + 审批关注点 + 回写内容。</p>
+</section>
+
+<section id="m5" class="diagram">
+  <h2><span class="badge">模块 4</span>LLM 接入与 Prompt 设计：哪里用大模型、模型看到什么、要求输出什么</h2>
+  <p class="intro">本系统一共 3 个 LLM 接入点：字段抽取（parse_agent）、语义规则判断与命中复核（rule_agent）、评论生成（writeback_agent）。三者都走 OpenAI 兼容 API，模型、base_url、api_key 来自 .env，Prompt 全部要求"只依据原文、禁止编造、输出可校验结构"。</p>
+  <div class="svg-wrap">
+  <svg viewBox="0 0 1100 1060" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+    </defs>
+
+    <rect x="30" y="20" width="1040" height="64" rx="10" fill="#141b2d"/>
+    <text x="550" y="44" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">OpenAI 兼容 API · 统一接入（langchain-openai / openai SDK）</text>
+    <text x="550" y="66" text-anchor="middle" font-size="11" fill="#b9c4d8">.env：LLM_API_KEY / LLM_BASE_URL / LLM_MODEL；预留 LLM_PARSE_MODEL / LLM_RULE_MODEL / LLM_WRITEBACK_MODEL 单独指定模型</text>
+    <text x="550" y="96" text-anchor="middle" font-size="11" font-weight="bold" fill="#6d28d9">输出层：统一 JSON Schema 结构化输出（response_format=json_schema / with_structured_output），字段名与项目统一命名对齐，结构由协议层保证</text>
+
+    <!-- 列 1：parse_agent -->
+    <rect x="30" y="112" width="320" height="48" rx="8" fill="#7c3aed"/>
+    <text x="190" y="134" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">parse_agent · 字段抽取</text>
+    <text x="190" y="150" text-anchor="middle" font-size="10" fill="#ede9fe">app/agents/parse_agent.py</text>
+
+    <rect x="30" y="184" width="320" height="46" rx="8" fill="#f1ebfe" stroke="#7c3aed"/>
+    <text x="190" y="203" text-anchor="middle" font-size="11" font-weight="bold" fill="#5b21b6">调用点：parse_node（模块 2）</text>
+    <text x="190" y="219" text-anchor="middle" font-size="10" fill="#475569">extract_contract_fields(document_text, llm)</text>
+
+    <rect x="30" y="254" width="320" height="70" rx="8" fill="#f8fafc" stroke="#94a3b8"/>
+    <text x="46" y="276" font-size="11" font-weight="bold" fill="#334155">输入</text>
+    <text x="46" y="296" font-size="10" fill="#475569">DocumentText 分页文本</text>
+    <text x="46" y="312" font-size="10" fill="#475569">字段清单：8 基本 + 8 条款</text>
+
+    <rect x="30" y="348" width="320" height="386" rx="8" fill="#faf5ff" stroke="#c4b5fd"/>
+    <text x="46" y="370" font-size="11" font-weight="bold" fill="#6d28d9">Prompt 结构</text>
+    <text x="46" y="394" font-size="10" font-weight="bold" fill="#7c3aed">system</text>
+    <text x="46" y="412" font-size="10" fill="#475569">你是合同审查系统的字段抽取器。</text>
+    <text x="46" y="428" font-size="10" fill="#475569">只依据合同原文抽取字段，禁止编造；</text>
+    <text x="46" y="444" font-size="10" fill="#475569">缺失字段标记 missing。</text>
+    <text x="46" y="470" font-size="10" font-weight="bold" fill="#7c3aed">user</text>
+    <text x="46" y="488" font-size="10" fill="#475569">合同文本（按页拼接）+ 字段清单</text>
+    <text x="46" y="504" font-size="10" fill="#475569">（合同标题/编号/签约主体/对方名称/</text>
+    <text x="46" y="520" font-size="10" fill="#475569">金额/币种/生效时间/到期时间/</text>
+    <text x="46" y="536" font-size="10" fill="#475569">付款/交付/验收/违约/保密/数据/</text>
+    <text x="46" y="552" font-size="10" fill="#475569">知识产权/争议解决条款）</text>
+    <text x="46" y="578" font-size="10" font-weight="bold" fill="#7c3aed">要求</text>
+    <text x="46" y="596" font-size="10" fill="#475569">输出 JSON 数组，每项：</text>
+    <text x="46" y="612" font-size="10" fill="#475569">{field_name, field_value, raw_text,</text>
+    <text x="46" y="628" font-size="10" fill="#475569">page_no, extract_status}</text>
+    <text x="46" y="652" font-size="10" fill="#475569">raw_text 必须为原文片段，不可改写。</text>
+    <text x="46" y="668" font-size="10" fill="#475569">重复字段：金额只抽带数值原文、多条取金额最大；其余按证据质量，候选留档 candidates</text>
+    <text x="46" y="732" font-size="10" font-weight="bold" fill="#6d28d9">输出层：JSON Schema 模式强制结构，字段名按约定清单</text>
+    <text x="46" y="682" font-size="10" font-weight="bold" fill="#0d9488">校验</text>
+    <text x="46" y="700" font-size="10" fill="#475569">validate_parse_result：16 字段校验，</text>
+    <text x="46" y="716" font-size="10" fill="#475569">缺失置 missing + parse_error。</text>
+
+    <rect x="30" y="758" width="320" height="56" rx="8" fill="#e6f7f5" stroke="#0d9488"/>
+    <text x="190" y="780" text-anchor="middle" font-size="11" font-weight="bold" fill="#115e59">输出</text>
+    <text x="190" y="800" text-anchor="middle" font-size="10" fill="#475569">ContractParseResult（basic_info / clauses / fields）</text>
+
+    <rect x="30" y="838" width="320" height="72" rx="8" fill="#fdeeee" stroke="#dc2626"/>
+    <text x="190" y="860" text-anchor="middle" font-size="11" font-weight="bold" fill="#991b1b">失败处理</text>
+    <text x="190" y="878" text-anchor="middle" font-size="10" fill="#7f1d1d">字段缺失 → extract_status=missing</text>
+    <text x="190" y="894" text-anchor="middle" font-size="10" fill="#7f1d1d">LLM 调用失败/空结果 → failed → blocked</text>
+
+    <!-- 列 2：rule_agent -->
+    <rect x="390" y="112" width="320" height="48" rx="8" fill="#7c3aed"/>
+    <text x="550" y="134" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">rule_agent · 语义规则</text>
+    <text x="550" y="150" text-anchor="middle" font-size="10" fill="#ede9fe">app/agents/rule_agent.py</text>
+
+    <rect x="390" y="184" width="320" height="46" rx="8" fill="#f1ebfe" stroke="#7c3aed"/>
+    <text x="550" y="203" text-anchor="middle" font-size="11" font-weight="bold" fill="#5b21b6">调用点：review_node（模块 3）</text>
+    <text x="550" y="219" text-anchor="middle" font-size="10" fill="#475569">judge_semantic_rules / review_code_hits</text>
+
+    <rect x="390" y="254" width="320" height="70" rx="8" fill="#f8fafc" stroke="#94a3b8"/>
+    <text x="406" y="276" font-size="11" font-weight="bold" fill="#334155">输入</text>
+    <text x="406" y="296" font-size="10" fill="#475569">ContractParseResult + 规则定义</text>
+    <text x="406" y="312" font-size="10" fill="#475569">（rule_code / rule_name / match_text）</text>
+
+    <rect x="390" y="348" width="320" height="386" rx="8" fill="#faf5ff" stroke="#c4b5fd"/>
+    <text x="406" y="370" font-size="11" font-weight="bold" fill="#6d28d9">Prompt 结构</text>
+    <text x="406" y="394" font-size="10" font-weight="bold" fill="#7c3aed">system</text>
+    <text x="406" y="412" font-size="10" fill="#475569">你是合同风险审查员。判断规则是否命中，</text>
+    <text x="406" y="428" font-size="10" fill="#475569">只引用原文证据；无法判断时 hit=false，</text>
+    <text x="406" y="444" font-size="10" fill="#475569">不要脑补条款内容。</text>
+    <text x="406" y="470" font-size="10" font-weight="bold" fill="#7c3aed">user</text>
+    <text x="406" y="488" font-size="10" fill="#475569">规则：rule_code / rule_name / risk_level /</text>
+    <text x="406" y="504" font-size="10" fill="#475569">match_text / suggestion_text</text>
+    <text x="406" y="520" font-size="10" fill="#475569">对应条款文本：付款/交付/验收/违约/保密/</text>
+    <text x="406" y="536" font-size="10" fill="#475569">数据/知识产权/争议解决等</text>
+    <text x="406" y="562" font-size="10" font-weight="bold" fill="#7c3aed">要求</text>
+    <text x="406" y="580" font-size="10" fill="#475569">输出 JSON：</text>
+    <text x="406" y="596" font-size="10" fill="#475569">{rule_id, hit, evidence_text,</text>
+    <text x="406" y="612" font-size="10" fill="#475569">evidence_position, reason}</text>
+    <text x="406" y="636" font-size="10" fill="#475569">evidence_text 必须来自原文。</text>
+    <text x="406" y="666" font-size="10" font-weight="bold" fill="#0d9488">复核</text>
+    <text x="406" y="684" font-size="10" fill="#475569">review_code_hits：对代码命中证据</text>
+    <text x="406" y="700" font-size="10" fill="#475569">再做一次语义复核，过滤明显误报。</text>
+    <text x="406" y="726" font-size="10" fill="#475569">11 条规则中 regex/numeric 走代码，</text>
+    <text x="406" y="742" font-size="10" fill="#475569">违约/数据/知产等语义项走本代理。</text>
+
+    <rect x="390" y="758" width="320" height="56" rx="8" fill="#e6f7f5" stroke="#0d9488"/>
+    <text x="550" y="780" text-anchor="middle" font-size="11" font-weight="bold" fill="#115e59">输出</text>
+    <text x="550" y="800" text-anchor="middle" font-size="10" fill="#475569">SemanticVerdict[] → save_hits（rule_hits）</text>
+
+    <rect x="390" y="838" width="320" height="72" rx="8" fill="#fdeeee" stroke="#dc2626"/>
+    <text x="550" y="860" text-anchor="middle" font-size="11" font-weight="bold" fill="#991b1b">失败处理</text>
+    <text x="550" y="878" text-anchor="middle" font-size="10" fill="#7f1d1d">LLM 判断失败 → 明确报错 → blocked</text>
+    <text x="550" y="894" text-anchor="middle" font-size="10" fill="#7f1d1d">已保存的代码命中不受影响</text>
+
+    <!-- 列 3：writeback_agent -->
+    <rect x="750" y="112" width="320" height="48" rx="8" fill="#7c3aed"/>
+    <text x="910" y="134" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">writeback_agent · 评论生成</text>
+    <text x="910" y="150" text-anchor="middle" font-size="10" fill="#ede9fe">app/agents/writeback_agent.py</text>
+
+    <rect x="750" y="184" width="320" height="46" rx="8" fill="#f1ebfe" stroke="#7c3aed"/>
+    <text x="910" y="203" text-anchor="middle" font-size="11" font-weight="bold" fill="#5b21b6">调用点：writeback_node（模块 1 ⑪）</text>
+    <text x="910" y="219" text-anchor="middle" font-size="10" fill="#475569">generate_comment(review_result)</text>
+
+    <rect x="750" y="254" width="320" height="70" rx="8" fill="#f8fafc" stroke="#94a3b8"/>
+    <text x="766" y="276" font-size="11" font-weight="bold" fill="#334155">输入</text>
+    <text x="766" y="296" font-size="10" fill="#475569">ReviewResult（总风险 / 关注点 / 摘要 /</text>
+    <text x="766" y="312" font-size="10" fill="#475569">命中列表与证据）</text>
+
+    <rect x="750" y="348" width="320" height="386" rx="8" fill="#faf5ff" stroke="#c4b5fd"/>
+    <text x="766" y="370" font-size="11" font-weight="bold" fill="#6d28d9">Prompt 结构</text>
+    <text x="766" y="394" font-size="10" font-weight="bold" fill="#7c3aed">system</text>
+    <text x="766" y="412" font-size="10" fill="#475569">你是合同审查评论撰写助手。输出中文</text>
+    <text x="766" y="428" font-size="10" fill="#475569">回写评论：总风险 + 审批关注点 + 摘要；</text>
+    <text x="766" y="444" font-size="10" fill="#475569">只引用已确认证据，不代替人工审批。</text>
+    <text x="766" y="470" font-size="10" font-weight="bold" fill="#7c3aed">user</text>
+    <text x="766" y="488" font-size="10" fill="#475569">ReviewResult：overall_risk_level、</text>
+    <text x="766" y="504" font-size="10" fill="#475569">summary_text、focus_points_json、</text>
+    <text x="766" y="520" font-size="10" fill="#475569">命中规则与证据位置</text>
+    <text x="766" y="546" font-size="10" font-weight="bold" fill="#7c3aed">要求</text>
+    <text x="766" y="564" font-size="10" fill="#475569">输出纯文本 comment_text，结构：</text>
+    <text x="766" y="580" font-size="10" fill="#475569">1) 总体风险结论</text>
+    <text x="766" y="596" font-size="10" fill="#475569">2) 审批关注点（逐条 + 证据位置）</text>
+    <text x="766" y="612" font-size="10" fill="#475569">3) 中文摘要</text>
+    <text x="766" y="636" font-size="10" fill="#475569">语气客观，供审批人决策参考。</text>
+    <text x="766" y="666" font-size="10" font-weight="bold" fill="#0d9488">回写</text>
+    <text x="766" y="684" font-size="10" fill="#475569">write_approval_comment(instance_id,</text>
+    <text x="766" y="700" font-size="10" fill="#475569">review_id) → 审批评论区</text>
+    <text x="766" y="716" font-size="10" fill="#475569">comment_logs 记录 write_status 与响应。</text>
+
+    <rect x="750" y="758" width="320" height="56" rx="8" fill="#e6f7f5" stroke="#0d9488"/>
+    <text x="910" y="780" text-anchor="middle" font-size="11" font-weight="bold" fill="#115e59">输出</text>
+    <text x="910" y="800" text-anchor="middle" font-size="10" fill="#475569">comment_text（写回审批评论区）</text>
+
+    <rect x="750" y="838" width="320" height="72" rx="8" fill="#fdeeee" stroke="#dc2626"/>
+    <text x="910" y="860" text-anchor="middle" font-size="11" font-weight="bold" fill="#991b1b">失败处理</text>
+    <text x="910" y="878" text-anchor="middle" font-size="10" fill="#7f1d1d">回写失败 → write_status=failed</text>
+    <text x="910" y="894" text-anchor="middle" font-size="10" fill="#7f1d1d">retry_writeback 可重试，任务仍可 done</text>
+
+    <rect x="30" y="938" width="1040" height="60" rx="10" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="6 3"/>
+    <text x="550" y="962" text-anchor="middle" font-size="12" font-weight="bold" fill="#334155">三个 LLM 接入点的共同约束</text>
+    <text x="550" y="982" text-anchor="middle" font-size="11" fill="#475569">只依据合同原文输出、禁止编造；输出结构可被 validate 校验；调用失败要明确报错并进入 blocked / failed，不允许静默吞错。</text>
+  </svg>
+  </div>
+</section>
+
+<section id="m1" class="diagram">
+  <h2><span class="badge">模块 5</span>系统架构总览：FastAPI + LangGraph + 服务分层</h2>
+  <p class="intro">整体分层：FastAPI 提供 REST/OpenAPI（前端本轮暂缓，2.4.7 用接口契约预留）→ asyncio 队列调度 → LangGraph 固定顺序工作流 → adapters/tools/services/agents 四类能力 → MySQL 持久化。层级之间通过 schemas/模型解耦，上层只能向下依赖。</p>
+  <div class="svg-wrap">
+  <svg viewBox="0 0 1100 760" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="m1a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+        <path d="M1 2L8 5L1 8" fill="none" stroke="#5b6b82" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </marker>
+    </defs>
+
+    <rect x="40" y="20" width="1020" height="96" rx="10" fill="#eef4ff" stroke="#94a3b8" stroke-dasharray="6 3"/>
+    <text x="52" y="38" font-size="11" font-weight="bold" fill="#64748b">第 1 层 · 入口层 · FastAPI 路由（app/api）</text>
+    <g font-size="11">
+      <rect x="70" y="56" width="150" height="40" rx="6" fill="#2563eb"/><text x="145" y="80" text-anchor="middle" fill="#fff" font-weight="bold">/api/auth 认证</text>
+      <rect x="236" y="56" width="150" height="40" rx="6" fill="#2563eb"/><text x="311" y="80" text-anchor="middle" fill="#fff" font-weight="bold">/api/tasks 任务</text>
+      <rect x="402" y="56" width="150" height="40" rx="6" fill="#2563eb"/><text x="477" y="80" text-anchor="middle" fill="#fff" font-weight="bold">/api/rules 规则</text>
+      <rect x="568" y="56" width="150" height="40" rx="6" fill="#2563eb"/><text x="643" y="80" text-anchor="middle" fill="#fff" font-weight="bold">/api/hits 命中</text>
+      <rect x="734" y="56" width="150" height="40" rx="6" fill="#2563eb"/><text x="809" y="80" text-anchor="middle" fill="#fff" font-weight="bold">/api/logs 日志</text>
+      <rect x="900" y="56" width="150" height="40" rx="6" fill="#2563eb"/><text x="975" y="80" text-anchor="middle" fill="#fff" font-weight="bold">/api/health 健康</text>
+    </g>
+
+    <line x1="550" y1="116" x2="550" y2="144" stroke="#5b6b82" stroke-width="1.8" marker-end="url(#m1a)"/>
+
+    <rect x="40" y="148" width="1020" height="92" rx="10" fill="#e8fbf8" stroke="#94a3b8" stroke-dasharray="6 3"/>
+    <text x="52" y="166" font-size="11" font-weight="bold" fill="#64748b">第 2 层 · 调度层 · asyncio.Queue + 后台任务（app/workers）</text>
+    <rect x="190" y="180" width="320" height="48" rx="6" fill="#0d9488"/><text x="350" y="202" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">asyncio.Queue 任务队列</text>
+    <text x="350" y="220" text-anchor="middle" fill="#e6fffa" font-size="10">enqueue_task(task_id)</text>
+    <line x1="510" y1="204" x2="646" y2="204" stroke="#5b6b82" stroke-width="1.8" marker-end="url(#m1a)"/>
+    <rect x="650" y="180" width="320" height="48" rx="6" fill="#0d9488"/><text x="810" y="202" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">worker_loop 后台消费</text>
+    <text x="810" y="220" text-anchor="middle" fill="#e6fffa" font-size="10">串行执行 run_workflow</text>
+
+    <line x1="550" y1="240" x2="550" y2="268" stroke="#5b6b82" stroke-width="1.8" marker-end="url(#m1a)"/>
+
+    <rect x="40" y="272" width="1020" height="120" rx="10" fill="#f3eefc" stroke="#94a3b8" stroke-dasharray="6 3"/>
+    <text x="52" y="290" font-size="11" font-weight="bold" fill="#64748b">第 3 层 · 工作流层 · LangGraph 固定顺序图（app/graph）</text>
+    <g font-size="11">
+      <rect x="64" y="316" width="130" height="44" rx="6" fill="#7c3aed"/><text x="129" y="343" text-anchor="middle" fill="#fff" font-weight="bold">ingest_node</text>
+      <rect x="214" y="316" width="130" height="44" rx="6" fill="#7c3aed"/><text x="279" y="343" text-anchor="middle" fill="#fff" font-weight="bold">download_node</text>
+      <rect x="364" y="316" width="130" height="44" rx="6" fill="#7c3aed"/><text x="429" y="343" text-anchor="middle" fill="#fff" font-weight="bold">parse_node</text>
+      <rect x="514" y="316" width="130" height="44" rx="6" fill="#7c3aed"/><text x="579" y="343" text-anchor="middle" fill="#fff" font-weight="bold">review_node</text>
+      <rect x="664" y="316" width="130" height="44" rx="6" fill="#7c3aed"/><text x="729" y="343" text-anchor="middle" fill="#fff" font-weight="bold">save_node</text>
+      <rect x="814" y="316" width="130" height="44" rx="6" fill="#7c3aed"/><text x="879" y="343" text-anchor="middle" fill="#fff" font-weight="bold">writeback_node</text>
+      <line x1="194" y1="338" x2="210" y2="338" stroke="#fff" stroke-width="1.8" marker-end="url(#m1a)"/>
+      <line x1="344" y1="338" x2="360" y2="338" stroke="#fff" stroke-width="1.8" marker-end="url(#m1a)"/>
+      <line x1="494" y1="338" x2="510" y2="338" stroke="#fff" stroke-width="1.8" marker-end="url(#m1a)"/>
+      <line x1="644" y1="338" x2="660" y2="338" stroke="#fff" stroke-width="1.8" marker-end="url(#m1a)"/>
+      <line x1="794" y1="338" x2="810" y2="338" stroke="#fff" stroke-width="1.8" marker-end="url(#m1a)"/>
+    </g>
+    <text x="550" y="380" text-anchor="middle" font-size="11" fill="#991b1b">异常分支：任意节点抛错 → block_node → task_status=blocked → admin 重试回 parsing/reviewing</text>
+
+    <line x1="550" y1="392" x2="550" y2="420" stroke="#5b6b82" stroke-width="1.8" marker-end="url(#m1a)"/>
+
+    <rect x="40" y="424" width="1020" height="120" rx="10" fill="#fff7ed" stroke="#94a3b8" stroke-dasharray="6 3"/>
+    <text x="52" y="442" font-size="11" font-weight="bold" fill="#64748b">第 4 层 · 能力层（app/adapters · app/tools · app/services · app/agents）</text>
+    <rect x="70" y="460" width="225" height="72" rx="6" fill="#ea580c"/><text x="182" y="484" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">adapters</text>
+    <text x="182" y="506" text-anchor="middle" fill="#ffedd5" font-size="10">ApprovalAdapter / MockClient</text>
+    <rect x="315" y="460" width="225" height="72" rx="6" fill="#ea580c"/><text x="427" y="484" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">tools</text>
+    <text x="427" y="506" text-anchor="middle" fill="#ffedd5" font-size="10">7 个工具函数（LangGraph 调用）</text>
+    <rect x="560" y="460" width="225" height="72" rx="6" fill="#ea580c"/><text x="672" y="484" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">services</text>
+    <text x="672" y="506" text-anchor="middle" fill="#ffedd5" font-size="10">拉取/附件/解析/规则/回写/日志</text>
+    <rect x="805" y="460" width="225" height="72" rx="6" fill="#ea580c"/><text x="917" y="484" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">agents</text>
+    <text x="917" y="506" text-anchor="middle" fill="#ffedd5" font-size="10">parse / rule / writeback（LLM）</text>
+
+    <line x1="550" y1="544" x2="550" y2="572" stroke="#5b6b82" stroke-width="1.8" marker-end="url(#m1a)"/>
+
+    <rect x="40" y="576" width="1020" height="92" rx="10" fill="#fef9e7" stroke="#94a3b8" stroke-dasharray="6 3"/>
+    <text x="52" y="594" font-size="11" font-weight="bold" fill="#64748b">第 5 层 · 数据层 · MySQL 8（Docker）+ SQLAlchemy 2.0（app/models）</text>
+    <rect x="140" y="610" width="520" height="44" rx="6" fill="#b45309"/>
+    <text x="400" y="630" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">8 张业务表 + users 支撑表</text>
+    <text x="400" y="646" text-anchor="middle" fill="#fef3c7" font-size="9">approval_tasks / approval_attachments / contract_parses / review_rules / rule_hits / review_results / comment_logs / task_logs</text>
+    <rect x="700" y="610" width="280" height="44" rx="6" fill="#b45309"/>
+    <text x="840" y="630" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">users（支撑表）</text>
+    <text x="840" y="646" text-anchor="middle" fill="#fef3c7" font-size="9">登录 / admin / reviewer 角色</text>
+
+    <rect x="40" y="692" width="1020" height="30" rx="8" fill="#f1f5f9"/>
+    <rect x="60" y="700" width="14" height="14" rx="3" fill="#2563eb"/><text x="82" y="711" font-size="11" fill="#475569">入口层</text>
+    <rect x="160" y="700" width="14" height="14" rx="3" fill="#0d9488"/><text x="182" y="711" font-size="11" fill="#475569">调度层</text>
+    <rect x="260" y="700" width="14" height="14" rx="3" fill="#7c3aed"/><text x="282" y="711" font-size="11" fill="#475569">工作流层</text>
+    <rect x="360" y="700" width="14" height="14" rx="3" fill="#ea580c"/><text x="382" y="711" font-size="11" fill="#475569">能力层</text>
+    <rect x="460" y="700" width="14" height="14" rx="3" fill="#b45309"/><text x="482" y="711" font-size="11" fill="#475569">数据层</text>
+    <line x1="590" y1="707" x2="630" y2="707" stroke="#5b6b82" stroke-width="1.5" marker-end="url(#m1a)"/><text x="642" y="711" font-size="11" fill="#475569">层间调用（api → services → tools/graph/adapters）</text>
+  </svg>
+  </div>
+  <p class="legend-note">解耦约定：模块间通过 schemas/模型交互；7 个工具见 spec Step 18-21，LLM 代理见 spec Step 23/25/26。</p>
+</section>
+
+</main>
+<script>
+const tabs=document.querySelectorAll('#tabs button');
+const sections=document.querySelectorAll('section.diagram');
+function showTab(name){
+  tabs.forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
+  sections.forEach(s=>s.classList.toggle('active',s.id===name));
+}
+tabs.forEach(b=>b.addEventListener('click',()=>{
+  showTab(b.dataset.tab);
+  history.replaceState(null,'','#'+b.dataset.tab);
+}));
+const initialTab=location.hash.replace('#','')||'m2';
+showTab(initialTab);
+</script>
+</body>
+</html>

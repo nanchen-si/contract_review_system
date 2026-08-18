@@ -70,7 +70,7 @@ class MockClient(ApprovalAdapter):
                 )
                 for att in item["attachments"]
             ],
-            status="pending",
+            status=item.get("status", "pending"),
         )
 
     def download(self, instance_id: str, attachment_id: str, file_name: str) -> DownloadResult:

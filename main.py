@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api import auth, hits, logs, rules, tasks
+from app.config import get_settings
 from app.core.security import ensure_admin_seed
 from app.db import init_db
 from app.workers.queue import worker_loop
@@ -59,3 +60,15 @@ def create_app(with_startup: bool = True) -> FastAPI:
 
 
 app = create_app()
+
+if __name__ == "__main__":
+    import uvicorn
+
+    settings = get_settings()
+
+    uvicorn.run(
+        "main:app",
+        host=settings.app_host,
+        port=settings.app_port,
+        reload=True,
+    )

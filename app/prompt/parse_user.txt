@@ -1,0 +1,10 @@
+请从以下合同文本中抽取字段。
+字段清单：{all_fields}
+规则：
+1. 金额只提取含具体数值的原文，如"合同总金额为人民币 1,200,000 元"；仅出现"金额"二字不提取；多条候选取金额最大者。
+2. 合同标题、合同编号等唯一字段只保留一条，原文上下文最完整者优先。
+3. 每个字段输出 field_name、field_value、raw_text、page_no、extract_status，extract_status 只能为 extracted 或 missing。
+输出 JSON 对象：{{"fields": [字段数组]}}，不要输出其他内容。
+
+合同文本：
+{chunk_text}

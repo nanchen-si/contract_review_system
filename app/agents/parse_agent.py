@@ -8,6 +8,7 @@ from openai import OpenAI
 
 from app.agents.llm import create_structured
 from app.config import get_settings
+from app.prompt import load_messages
 
 BASIC_FIELDS = [
     "合同标题",
@@ -86,27 +87,15 @@ def _get_client() -> OpenAI:
 
 
 def build_parse_messages(chunk_text: str) -> list[dict]:
-    """构造字段抽取提示词，写明字段清单、金额规则与重复字段优先级。"""
-    system = (
-        "你是合同审查系统的字段抽取器。只依据合同原文抽取字段，禁止编造；"
-        "缺失字段标记 missing。字段名必须严格使用给定清单。"
-    )
-    user = (
-        "请从以下合同文本中抽取字段。\n"
-        f"字段清单：{ALL_FIELDS}\n"
-        "规则：\n"
-        "1. 金额只提取含具体数值的原文，如“合同总金额为人民币 1,200,000 元”；"
-        "仅出现“金额”二字不提取；多条候选取金额最大者。\n"
-        "2. 合同标题、合同编号等唯一字段只保留一条，原文上下文最完整者优先。\n"
-        "3. 每个字段输出 field_name、field_value、raw_text、page_no、extract_status，"
-        "extract_status 只能为 extracted 或 missing。\n"
-        "输出 JSON 对象：{\"fields\": [字段数组]}，不要输出其他内容。\n\n"
-        f"合同文本：\n{chunk_text}"
-    )
-    return [
-        {"role": "system", "content": system},
-        {"role": "user", "content": user},
-    ]
+    """加载 parse_system / parse_user 模板并组装字段抽取提示词。"""
+    return load_messages([
+        {"role": "system", "name": "parse_system"},
+        {
+            "role": "user",
+            "name": "parse_user",
+            "format": {"all_fields": ALL_FIELDS, "chunk_text": chunk_text},
+        },
+    ])
 
 
 def _call_llm(chunk_text: str) -> list[dict]:

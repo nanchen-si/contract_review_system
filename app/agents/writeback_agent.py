@@ -7,6 +7,7 @@ from openai import OpenAI
 
 from app.agents.llm import create_structured
 from app.config import get_settings
+from app.prompt import load_messages
 
 logger = logging.getLogger("writeback_agent")
 
@@ -26,16 +27,14 @@ def generate_comment(review_result: dict) -> str:
     if settings.llm_api_key and settings.llm_base_url.startswith(("http://", "https://")):
         try:
             client = OpenAI(api_key=settings.llm_api_key, base_url=settings.llm_base_url_v1)
-            messages = [
-                {
-                    "role": "system",
-                    "content": "你是合同审查评论撰写助手。输出中文回写评论：总风险 + 审批关注点 + 摘要；只引用已确认证据，不代替人工审批。输出 JSON 对象：{\"comment_text\": \"评论内容\"}。",
-                },
+            messages = load_messages([
+                {"role": "system", "name": "writeback_system"},
                 {
                     "role": "user",
-                    "content": f"审查结果：{review_result}",
+                    "name": "writeback_user",
+                    "format": {"review_result": review_result},
                 },
-            ]
+            ])
             response = create_structured(
                 client,
                 settings.llm_model,

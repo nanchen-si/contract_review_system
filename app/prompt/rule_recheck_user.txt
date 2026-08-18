@@ -1,0 +1,4 @@
+规则：{rule_name}
+命中证据：{evidence_text}
+合同文本：
+{clause_text}

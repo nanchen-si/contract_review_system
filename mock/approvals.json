@@ -3,12 +3,35 @@
     {
       "instance_id": "APP-2026-0088",
       "approval_code": "HT-2026-0088",
-      "approval_title": "供应商采购合同审批",
+      "approval_title": "供应商采购合同审批（低风险）",
       "applicant_name": "张伟",
       "application_time": "2026-08-17 09:30:00",
+      "status": "success",
       "attachments": [
         {"attachment_id": "ATT-001", "file_name": "采购合同2026.docx", "file_type": "docx"},
         {"attachment_id": "ATT-002", "file_name": "采购合同2026-扫描件.png", "file_type": "png"}
+      ]
+    },
+    {
+      "instance_id": "APP-2026-0099",
+      "approval_code": "HT-2026-0099",
+      "approval_title": "高风险采购合同审批",
+      "applicant_name": "李娜",
+      "application_time": "2026-08-18 10:15:00",
+      "status": "success",
+      "attachments": [
+        {"attachment_id": "ATT-101", "file_name": "高风险采购合同.docx", "file_type": "docx"}
+      ]
+    },
+    {
+      "instance_id": "APP-2026-0100",
+      "approval_code": "HT-2026-0100",
+      "approval_title": "中风险采购合同审批",
+      "applicant_name": "王刚",
+      "application_time": "2026-08-18 14:20:00",
+      "status": "success",
+      "attachments": [
+        {"attachment_id": "ATT-201", "file_name": "中风险采购合同.docx", "file_type": "docx"}
       ]
     }
   ]
