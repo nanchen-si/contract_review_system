@@ -1,8 +1,9 @@
-"""统一读取 .env，向全项目提供配置单例。"""
+"""统一读取配置，向全项目提供配置单例。"""
 
+import os
+import warnings
 from functools import lru_cache
 from pathlib import Path
-import warnings
 from urllib.parse import urlparse
 
 from dotenv import dotenv_values
@@ -14,7 +15,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 class Settings(BaseModel):
     """项目配置模型，字段与 .env.example 一一对应。
 
-    配置只来自项目根目录 .env，不读取系统环境变量。
+    本地开发优先读取项目根目录 .env；容器部署（无 .env 文件）时读取系统环境变量。
     下方默认值仅作兜底；.env 中的同名变量会覆盖默认值。
     Settings 为进程级单例，修改 .env 后需重启服务（开发可用 uvicorn --reload）才生效。
     """
@@ -82,6 +83,11 @@ class Settings(BaseModel):
 
 @lru_cache
 def get_settings() -> Settings:
-    """从项目根 .env 读取配置并返回单例。"""
-    values = {key.lower(): value for key, value in dotenv_values(BASE_DIR / ".env").items()}
+    """读取配置并返回单例：有 .env 时以 .env 为准，否则用系统环境变量。"""
+    env_file = BASE_DIR / ".env"
+    values: dict[str, str] = {}
+    if env_file.exists():
+        values.update({key.lower(): value for key, value in dotenv_values(env_file).items()})
+    else:
+        values.update({key.lower(): value for key, value in os.environ.items() if value})
     return Settings(**values)
